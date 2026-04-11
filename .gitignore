@@ -1,0 +1,6 @@
+.codex
+Theory notes/
+
+# Local build outputs
+*.o
+gravity_sim
