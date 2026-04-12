@@ -15,6 +15,10 @@ static const double G = 180.0;
 static const double FIXED_DT = 1.0 / 120.0;
 static const double MAX_FRAME_TIME = 0.25;
 static const double SOFTENING = 12.0;
+static const double SPAWN_VELOCITY_SCALE = 0.60;
+static const double SPAWN_MASS_MIN = 6.0;
+static const double SPAWN_MASS_MAX = 160.0;
+static const double SPAWN_MASS_STEP = 4.0;
 
 typedef struct {
     double x;
@@ -40,6 +44,22 @@ typedef struct {
     int body_count;
 } Simulation;
 
+typedef struct {
+    bool active;
+    Vec2 start;
+    Vec2 current;
+    double mass;
+    int color_index;
+} SpawnState;
+
+static const SDL_Color SPAWN_PALETTE[] = {
+    {120, 200, 255, 255},
+    {255, 120, 150, 255},
+    {160, 255, 190, 255},
+    {255, 210, 120, 255},
+    {180, 160, 255, 255}
+};
+
 static Vec2 vec2(double x, double y) {
     Vec2 value = {x, y};
     return value;
@@ -60,6 +80,39 @@ static Vec2 vec_scale(Vec2 v, double scale) {
 static double vec_length_sq(Vec2 v) {
     return (v.x * v.x) + (v.y * v.y);
 }
+
+static double clamp_double(double value, double min_value, double max_value) {
+    if (value < min_value) {
+        return min_value;
+    }
+    if (value > max_value) {
+        return max_value;
+    }
+    return value; 
+ }
+ 
+ static double radius_from_mass(double mass) {
+    // The idea here is that mass tracks volume, and volume scales with r^3 so radius scales with the cube root of mass
+    return fmax(4.0, cbrt(mass) * 1.8);
+ }
+
+ static SDL_Color current_spawn_color(const SpawnState *spawn) {
+    int color_count = (int)(sizeof(SPAWN_PALETTE) / sizeof(SPAWN_PALETTE[0]));
+    return SPAWN_PALETTE[spawn->color_index % color_count];
+ }
+
+ static void adjust_spawn_mass(SpawnState *spawn, double delta) {
+    spawn->mass = clamp_double(spawn->mass + delta, SPAWN_MASS_MIN, SPAWN_MASS_MAX);
+ }
+
+ static bool add_body(Simulation *sim, Body body) {
+    if (sim->body_count >= MAX_BODIES) {
+        return false;
+    }
+    sim->bodies[sim->body_count] = body;
+    sim->body_count++;
+    return true;
+ }
 
 static void push_trail_point(Body *body) {
     body->trail[body->trail_next] = body->position;
@@ -222,7 +275,44 @@ static void draw_trail(SDL_Renderer *renderer, const Body *body) {
     }
 }
 
-static void render_simulation(SDL_Renderer *renderer, const Simulation *sim) {
+static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn) {
+    if(!spawn->active) {
+        return;
+    }
+
+    SDL_Color color = current_spawn_color(spawn);
+    SDL_Color ghost_color = color;
+    SDL_Color cursor_color = {255, 255, 255, 180};
+
+    ghost_color.a = 120;
+
+    SDL_SetRenderDrawColor(renderer, color.r, color.g, color.b, 220);
+    SDL_RenderDrawLine(
+        renderer,
+        (int)lround(spawn->start.x),
+        (int)lround(spawn->start.y),
+        (int)lround(spawn->current.x),
+        (int)lround(spawn->current.y)
+    );
+
+    draw_filled_circle(
+        renderer,
+        (int)lround(spawn->start.x),
+        (int)lround(spawn->start.y),
+        (int)lround(radius_from_mass(spawn->mass)),
+        ghost_color
+    );
+
+    draw_filled_circle(
+        renderer,
+        (int)lround(spawn->current.x),
+        (int)lround(spawn->current.y),
+        3,
+        cursor_color
+    );
+}
+
+static void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const SpawnState *spawn) {
     SDL_SetRenderDrawColor(renderer, 8, 12, 20, 255);
     SDL_RenderClear(renderer);
 
@@ -241,7 +331,23 @@ static void render_simulation(SDL_Renderer *renderer, const Simulation *sim) {
         );
     }
 
+    draw_spawn_preview(renderer, spawn);
     SDL_RenderPresent(renderer);
+}
+
+static void update_window_title(SDL_Window *window, const Simulation *sim, const SpawnState *spawn, bool paused) {
+    char title[256];
+
+    snprintf(
+        title,
+        sizeof(title),
+        "Gravity Sim | %s | bodies %d/%d | spawn mass %0.0f | LMB drag spawn | wheel or [ ] mass",
+        paused ? "paused" : "running",
+        sim->body_count,
+        MAX_BODIES,
+        spawn->mass
+    );
+    SDL_SetWindowTitle(window, title);
 }
 
 int main(void) {
@@ -282,8 +388,13 @@ int main(void) {
 
     Simulation initial_state = {0};
     Simulation sim = {0};
+    SpawnState spawn = {0};
+
     load_starter_scene(&initial_state);
     sim = initial_state;
+
+    spawn.mass = 20.0;
+    spawn.color_index = 0;
 
     bool running = true;
     bool paused = false;
@@ -293,6 +404,9 @@ int main(void) {
     Uint64 performance_frequency = SDL_GetPerformanceFrequency();
 
     puts("Controls:");
+    puts("  Left click + drag - spawn a new body and set its launch velocity");
+    puts("  Right click       - cancel the current spawn drag");
+    puts("  Mouse wheel / [ ] - adjust spawn mass");
     puts("  Space  - pause / resume");
     puts("  R      - reset scene");
     puts("  Esc    - quit");
@@ -316,18 +430,87 @@ int main(void) {
                     case SDLK_ESCAPE:
                         running = false;
                         break;
+
                     case SDLK_SPACE:
                         paused = !paused; 
                         break;
+
                     case SDLK_r:
                         sim = initial_state;
                         accumulator = 0.0;
-                        break;
-                    default:
+                        spawn.active = false;
+                        spawn.color_index = 0;
                         break;
 
+                    case SDLK_LEFTBRACKET:
+                        adjust_spawn_mass(&spawn, -SPAWN_MASS_STEP);
+                        break;
+
+                    case SDLK_RIGHTBRACKET:
+                        adjust_spawn_mass(&spawn, SPAWN_MASS_STEP);
+                        break;
+
+                    default:
+                        break;
                 }
             }
+            if (event.type == SDL_MOUSEWHEEL) {
+                int wheel_y = event.wheel.y;
+
+                if (event.wheel.direction == SDL_MOUSEWHEEL_FLIPPED) {
+                    wheel_y = -wheel_y;
+                }
+                
+                if (wheel_y != 0) {
+                    adjust_spawn_mass(&spawn, wheel_y * SPAWN_MASS_STEP);
+                }
+            }
+
+            if (event.type == SDL_MOUSEBUTTONDOWN) {
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    spawn.active = true;
+                    spawn.start = vec2((double)event.button.x, (double)event.button.y);
+                    spawn.current = spawn.start;
+                }
+
+                if (event.button.button == SDL_BUTTON_RIGHT) {
+                    spawn.active = false;
+                }
+            }
+
+            if (event.type == SDL_MOUSEMOTION && spawn.active) {
+                spawn.current = vec2((double)event.motion.x, (double)event.motion.y);
+            }
+
+            if (event.type == SDL_MOUSEBUTTONUP && 
+                event.button.button == SDL_BUTTON_LEFT &&
+                spawn.active) {
+                spawn.current = vec2((double)event.button.x, (double)event.button.y);
+                
+                Vec2 launch_velocity = vec_scale(
+                    vec_sub(spawn.current, spawn.start),
+                    SPAWN_VELOCITY_SCALE
+                );
+
+                Body new_body = make_body(
+                    spawn.start.x,
+                    spawn.start.y,
+                    launch_velocity.x,
+                    launch_velocity.y,
+                    spawn.mass,
+                    radius_from_mass(spawn.mass),
+                    current_spawn_color(&spawn)
+                );
+
+                if (!add_body(&sim, new_body)) {
+                    fprintf(stderr, "Body limit reached (%d max)\n", MAX_BODIES);
+                } else {
+                    int color_count = (int)(sizeof(SPAWN_PALETTE)/ sizeof(SPAWN_PALETTE[0]));
+                    spawn.color_index = (spawn.color_index + 1) % color_count;
+                }
+
+                spawn.active = false;
+            } 
         }
         // Fixed timestep loop
         if (!paused) {
@@ -338,7 +521,8 @@ int main(void) {
                 accumulator -= FIXED_DT;
             }
         }
-        render_simulation(renderer, &sim);
+        update_window_title(window, &sim, &spawn, paused);
+        render_simulation(renderer, &sim, &spawn);
     }
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
