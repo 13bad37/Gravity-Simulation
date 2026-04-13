@@ -1,0 +1,207 @@
+#include "scenes.h"
+
+#include "simulation.h"
+
+#include <math.h>
+
+static void clear_simulation(Simulation *sim) {
+    sim->body_count = 0;
+}
+
+static void set_zero_total_momentum(Simulation *sim) {
+    Vec2 total_momentum = vec2(0.0, 0.0);
+    double total_mass = 0.0;
+
+    for (int i = 0; i < sim->body_count; i++) {
+        Vec2 momentum = vec_scale(sim->bodies[i].velocity, sim->bodies[i].mass);
+        total_momentum = vec_add(total_momentum, momentum);
+        total_mass += sim->bodies[i].mass;
+    }
+
+    if (total_mass <= 0.0) {
+        return;
+    }
+
+    Vec2 center_of_mass_velocity = vec_scale(total_momentum, 1.0 / total_mass);
+    for (int i = 0; i< sim->body_count; i++) {
+        sim->bodies[i].velocity = vec_sub(sim->bodies[i].velocity, center_of_mass_velocity);
+    }
+}
+
+static void finalise_scene(Simulation *sim) {
+    // Keeps whole system from drifting for no physical reason
+    set_zero_total_momentum(sim);
+
+    for (int i = 0; i < sim->body_count; i++) {
+        reset_trail(&sim->bodies[i]);
+    }
+}
+
+// For a near circular orbit around a big central mass: v = sqrt(G * M / r)
+static double circular_orbit_speed(double central_mass, double orbital_radius) {
+    return sqrt((G * central_mass)/ orbital_radius);
+}
+
+static void load_empty_scene(Simulation *sim) {
+    clear_simulation(sim);
+}
+
+static void load_starter_scene(Simulation *sim) {
+    const SDL_Color star_color = {255, 214, 140, 255};
+    const SDL_Color blue_color = {120, 200, 255, 255};
+    const SDL_Color red_color = {255, 120, 150, 255};
+
+    const double center_x = WINDOW_WIDTH * 0.5;
+    const double center_y = WINDOW_HEIGHT * 0.5;
+    const double star_mass = 8000.0;
+
+    Body star = make_body(center_x, center_y, 0.0, 0.0, star_mass, 16.0, star_color);
+
+    const double orbit_a_radius = 210.0;
+    const double orbit_a_speed = circular_orbit_speed(star_mass, orbit_a_radius);
+
+    // Velo is perpendicular to the radius
+    Body planet_a = make_body(
+        center_x + orbit_a_radius,
+        center_y,
+        0.0,
+        -orbit_a_speed,
+        14.0,
+        6.0,
+        blue_color
+    );
+
+    const double orbit_b_radius = 320.0;
+    const double orbit_b_speed = circular_orbit_speed(star_mass, orbit_b_radius);
+
+    // a little under circular speed so the orbit is a bit more interesting
+    Body planet_b = make_body(
+        center_x - orbit_b_radius,
+        center_y,
+        0.0,
+        orbit_b_speed * 0.92,
+        26.0,
+        8.0,
+        red_color
+    );
+    sim->body_count = 3;
+    sim->bodies[0] = star;
+    sim->bodies[1] = planet_a;
+    sim->bodies[2] = planet_b;
+
+    finalise_scene(sim);
+}
+
+static void load_chaotic_three_body_scene(Simulation *sim) {
+    const SDL_Color color_a = {120, 200, 255, 255};
+    const SDL_Color color_b = {255, 120, 150, 255};
+    const SDL_Color color_c = {160, 255, 190, 255};
+
+    const double center_x = WINDOW_WIDTH * 0.5;
+    const double center_y = WINDOW_HEIGHT *0.5;
+    const double mass = 260.0;
+    const double radius = radius_from_mass(mass);
+
+    clear_simulation(sim);
+
+    sim->body_count = 3;
+    sim->bodies[0] = make_body(center_x - 135.0, center_y - 55.0, 20.0, -24.0, mass, radius, color_a);
+    sim->bodies[1] = make_body(center_x + 120.0, center_y + 10.0, -16.0, 22.0, mass, radius, color_b);
+    sim->bodies[2] = make_body(center_x + 15.0, center_y + 145.0, -6.0, -5.0, mass, radius, color_c);
+
+    finalise_scene(sim);
+}
+
+static void load_binary_stars_scene(Simulation *sim) {
+    const SDL_Color star_a_color = {255, 214, 140, 255};
+    const SDL_Color star_b_color = {255, 170, 120, 255};
+    const SDL_Color planet_color = {120, 200, 255, 255};
+
+    const double center_x = WINDOW_WIDTH * 0.5;
+    const double center_y = WINDOW_HEIGHT *0.5;
+    const double star_mass = 1200.0;
+    const double star_radius = radius_from_mass(star_mass);
+    const double star_seperation = 260.0;
+
+    // Equal mass binary: each star feels gravity from the other star and orbits barycenter, solving F = mv^2 / r -> v = sqrt(G*M/(2*d)) where M is the mass of the other star and D is the full seperation
+
+    const double star_speed = sqrt((G * star_mass)/ (2.0 * star_seperation));
+
+    const double planet_radius_from_center = 420.0;
+    const double planet_speed = circular_orbit_speed(star_mass * 2.0, planet_radius_from_center) * 0.94;
+
+    clear_simulation(sim);
+
+    sim->body_count = 3;
+    sim->bodies[0] = make_body(
+        center_x - (star_seperation * 0.5),
+        center_y,
+        0.0,
+        -star_speed,
+        star_mass,
+        star_radius,
+        star_a_color
+    );
+    sim->bodies[1] = make_body(
+        center_x + (star_seperation *0.5),
+        center_y,
+        0.0,
+        star_speed,
+        star_mass,
+        star_radius,
+        star_b_color
+    );
+    sim->bodies[2] = make_body(
+        center_x,
+        center_y - planet_radius_from_center,
+        planet_speed,
+        0.0,
+        18.0,
+        radius_from_mass(18.0),
+        planet_color
+    );
+    finalise_scene(sim);
+}
+
+const char *scene_name(ScenePreset preset) {
+    switch (preset) {
+        case SCENE_EMPTY:
+            return "empty";
+        case SCENE_STARTER:
+            return("starter");
+        case SCENE_CHAOTIC_3_BODY:
+            return"chaotic 3-body";
+        case SCENE_BINARY_STARS:
+            return "binary stars";
+        default:
+            return "unkown";
+    }
+}
+
+static void load_scene(Simulation *sim, ScenePreset preset) {
+    switch (preset) {
+        case SCENE_EMPTY:
+            load_empty_scene(sim);
+            break;
+        case SCENE_STARTER:
+            load_starter_scene(sim);
+            break;
+        case SCENE_CHAOTIC_3_BODY:
+            load_chaotic_three_body_scene(sim);
+            break;
+        case SCENE_BINARY_STARS:
+            load_binary_stars_scene(sim);
+            break;
+        default:
+            load_starter_scene(sim);
+            break;
+    }
+}
+
+void activate_scene(ScenePreset preset, Simulation *initial_state, Simulation *sim, SpawnState *spawn, double *accumulator) {
+    load_scene(initial_state, preset);
+    *sim = *initial_state;
+    *accumulator = 0.0;
+    spawn->active = false;
+    spawn->color_index = 0;
+}

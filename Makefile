@@ -5,16 +5,16 @@ LDFLAGS = $(shell pkg-config --libs sdl2) -lm
 
 TARGET = gravity_sim
 
-SRC = main.c
-OBJ = main.o
+SRC = main.c simulation.c scenes.c render.c
+OBJ = main.o simulation.o scenes.o render.o
 
 all: $(TARGET)
 
 $(TARGET): $(OBJ)
 	$(CC) $(OBJ) -o $(TARGET) $(LDFLAGS)
 
-$(OBJ): $(SRC)
-	$(CC) $(CFLAGS) -c $(SRC)
+%.o: %.c
+	$(CC) $(CFLAGS) -c $<
 
 run: all
 	./$(TARGET)
