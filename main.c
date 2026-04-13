@@ -188,8 +188,7 @@ static void load_starter_scene(Simulation *sim) {
     sim->bodies[1] = planet_a;
     sim->bodies[2] = planet_b;
 
-    // Giving the star the opposite momentum so the system
-    // starts closer to a balanced center of mass instead of cheating it as fixed. 
+    // Giving the star the opposite momentum so the system starts closer to a balanced center of mass instead of cheating it as fixed. 
 
     Vec2 total_planet_momentum = vec2(0.0, 0.0);
     for (int i = 1; i < sim->body_count; i++) {
