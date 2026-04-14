@@ -2,17 +2,25 @@
 
 #include <math.h>
 
-// Sim units, not real astronomical constants
-// Since this is the first iteration, it's more of a feature since it keeps this version readable for me to extend later.
+// The simulation now uses SI units internally:
+// meters, kilograms, and seconds.
+// Rendering is handled separately so the physics code can stay unit-clean.
 
-const double G = 180.0;
-const double FIXED_DT = 1.0 / 120.0;
+const double G = 6.67430e-11;
+const double FIXED_DT = 1800.0;
 const double MAX_FRAME_TIME = 0.25;
-const double SOFTENING = 12.0;
-const double SPAWN_VELOCITY_SCALE = 0.60;
-const double SPAWN_MASS_MIN = 6.0;
-const double SPAWN_MASS_MAX = 160.0;
-const double SPAWN_MASS_STEP = 4.0;
+const double SOFTENING = 1.0e7;
+const double VIEW_METERS_PER_PIXEL = 5.0e8;
+const double SPAWN_SPEED_PER_PIXEL = 300.0;
+const double EARTH_MASS = 5.9722e24;
+const double EARTH_RADIUS = 6.371e6;
+const double EARTH_DENSITY = 5514.0;
+const double SOLAR_MASS = 1.98847e30;
+const double SOLAR_RADIUS = 6.9634e8;
+const double AU = 1.495978707e11;
+const double SPAWN_MASS_MIN = 2.9861e23;
+const double SPAWN_MASS_MAX = 1.19444e26;
+const double SPAWN_MASS_STEP = 1.49305e24;
 
 static const SDL_Color SPAWN_PALETTE[] = {
     {120, 200, 255, 255},
@@ -54,8 +62,17 @@ static double clamp_double(double value, double min_value, double max_value) {
 }
 
 double radius_from_mass(double mass) {
-    // The idea here is that mass tracks volume, and volume scales with r^3 so radius scales with the cube root of mass
-    return fmax(4.0, cbrt(mass) * 1.8);
+    const double pi = 3.14159265358979323846;
+
+    if (mass <= 0.0) {
+        return 0.0;
+    }
+
+    // If we assume a default rocky density for spawned bodies:
+    // m = rho * (4/3) * pi * r^3
+    // so
+    // r = cbrt((3m) / (4pi rho))
+    return cbrt((3.0 * mass) / (4.0 * pi * EARTH_DENSITY));
 }
 
 SDL_Color current_spawn_color(const SpawnState *spawn) {

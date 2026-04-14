@@ -7,16 +7,23 @@
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 #define MAX_BODIES 16
-#define TRAIL_LENGTH 240
+#define TRAIL_LENGTH 2000
 
 extern const double G;
 extern const double FIXED_DT;
 extern const double MAX_FRAME_TIME;
 extern const double SOFTENING;
-extern const double SPAWN_VELOCITY_SCALE;
+extern const double VIEW_METERS_PER_PIXEL;
+extern const double SPAWN_SPEED_PER_PIXEL;
 extern const double SPAWN_MASS_MIN;
 extern const double SPAWN_MASS_MAX;
 extern const double SPAWN_MASS_STEP;
+extern const double EARTH_MASS;
+extern const double EARTH_RADIUS;
+extern const double EARTH_DENSITY;
+extern const double SOLAR_MASS;
+extern const double SOLAR_RADIUS;
+extern const double AU;
 
 typedef struct {
     double x;

@@ -6,6 +6,12 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
 
+// Physics now runs in SI units, so the sim now uses explicit playback rate
+// This is just says 1 real second corresponds to 1 simulated day.
+static const double SIM_SECONDS_PER_REAL_SECOND = 86400.0;
+static const double TIME_SCALE_OPTIONS[] = {0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0};
+static const int DEFAULT_TIME_SCALE_INDEX = 3;
+
 int main(void) {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -46,10 +52,12 @@ int main(void) {
     SpawnState spawn = {0};
     ScenePreset current_scene = SCENE_STARTER;
     double accumulator = 0.0;
+    int time_scale_index = DEFAULT_TIME_SCALE_INDEX;
+    bool hud_visible = true;
 
     activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator);
 
-    spawn.mass = 20.0;
+    spawn.mass = EARTH_MASS;
     spawn.color_index = 0;
 
     bool running = true;
@@ -57,15 +65,7 @@ int main(void) {
 
     Uint64 previous_counter = SDL_GetPerformanceCounter();
     Uint64 performance_frequency = SDL_GetPerformanceFrequency();
-
-    puts("Controls:");
-    puts("  Left click + drag - spawn a new body and set its launch velocity");
-    puts("  Right click       - cancel the current spawn drag");
-    puts("  Mouse wheel / [ ] - adjust spawn mass");
-    puts("  0/1/2/3 - empty / starter/ 3-body / binary stars");
-    puts("  Space  - pause / resume");
-    puts("  R      - reset scene");
-    puts("  Esc    - quit");
+    int time_scale_count = (int)(sizeof(TIME_SCALE_OPTIONS) / sizeof(TIME_SCALE_OPTIONS[0]));
 
     while (running) {
         Uint64 current_counter = SDL_GetPerformanceCounter();
@@ -93,6 +93,14 @@ int main(void) {
 
                     case SDLK_r:
                         activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator);
+                        break;
+
+                    case SDLK_h:
+                        hud_visible = !hud_visible;
+                        break;
+
+                    case SDLK_t:
+                        time_scale_index = DEFAULT_TIME_SCALE_INDEX;
                         break;
 
                     case SDLK_0:
@@ -123,6 +131,20 @@ int main(void) {
                         adjust_spawn_mass(&spawn, SPAWN_MASS_STEP);
                         break;
 
+                    case SDLK_MINUS:
+                    case SDLK_KP_MINUS:
+                        if (time_scale_index > 0) {
+                            time_scale_index--;
+                        }
+                        break;
+
+                    case SDLK_EQUALS:
+                    case SDLK_KP_PLUS:
+                        if (time_scale_index < time_scale_count - 1) {
+                            time_scale_index++;
+                        }
+                        break;
+
                     default:
                         break;
                 }
@@ -142,7 +164,7 @@ int main(void) {
             if (event.type == SDL_MOUSEBUTTONDOWN) {
                 if (event.button.button == SDL_BUTTON_LEFT) {
                     spawn.active = true;
-                    spawn.start = vec2((double)event.button.x, (double)event.button.y);
+                    spawn.start = screen_to_world(event.button.x, event.button.y);
                     spawn.current = spawn.start;
                 }
 
@@ -152,17 +174,17 @@ int main(void) {
             }
 
             if (event.type == SDL_MOUSEMOTION && spawn.active) {
-                spawn.current = vec2((double)event.motion.x, (double)event.motion.y);
+                spawn.current = screen_to_world(event.motion.x, event.motion.y);
             }
 
             if (event.type == SDL_MOUSEBUTTONUP &&
                 event.button.button == SDL_BUTTON_LEFT &&
                 spawn.active) {
-                spawn.current = vec2((double)event.button.x, (double)event.button.y);
+                spawn.current = screen_to_world(event.button.x, event.button.y);
 
                 Vec2 launch_velocity = vec_scale(
                     vec_sub(spawn.current, spawn.start),
-                    SPAWN_VELOCITY_SCALE
+                    SPAWN_SPEED_PER_PIXEL / VIEW_METERS_PER_PIXEL
                 );
 
                 Body new_body = make_body(
@@ -187,15 +209,27 @@ int main(void) {
         }
         // Fixed timestep loop
         if (!paused) {
-            accumulator += frame_time;
+            // frame_time is real wall-clock time in seconds.
+            // We scale it into simulated time before feeding the fixed-step accumulator.
+            accumulator += frame_time * SIM_SECONDS_PER_REAL_SECOND * TIME_SCALE_OPTIONS[time_scale_index];
 
             while (accumulator >= FIXED_DT) {
                 step_simulation(&sim, FIXED_DT);
                 accumulator -= FIXED_DT;
             }
         }
-        update_window_title(window, &sim, &spawn, current_scene, paused);
-        render_simulation(renderer, &sim, &spawn);
+        update_window_title(window, &sim, &spawn, current_scene, paused, TIME_SCALE_OPTIONS[time_scale_index]);
+        render_simulation(
+            renderer,
+            &sim,
+            &spawn,
+            current_scene,
+            paused,
+            hud_visible,
+            TIME_SCALE_OPTIONS[time_scale_index],
+            time_scale_index,
+            time_scale_count
+        );
     }
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);

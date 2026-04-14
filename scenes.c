@@ -51,37 +51,35 @@ static void load_starter_scene(Simulation *sim) {
     const SDL_Color blue_color = {120, 200, 255, 255};
     const SDL_Color red_color = {255, 120, 150, 255};
 
-    const double center_x = WINDOW_WIDTH * 0.5;
-    const double center_y = WINDOW_HEIGHT * 0.5;
-    const double star_mass = 8000.0;
+    const double mars_orbit_radius = 1.523679 * AU;
+    const double earth_orbit_radius = AU;
+    const double star_mass = SOLAR_MASS;
 
-    Body star = make_body(center_x, center_y, 0.0, 0.0, star_mass, 16.0, star_color);
+    Body star = make_body(0.0, 0.0, 0.0, 0.0, star_mass, SOLAR_RADIUS, star_color);
 
-    const double orbit_a_radius = 210.0;
-    const double orbit_a_speed = circular_orbit_speed(star_mass, orbit_a_radius);
+    const double orbit_a_speed = circular_orbit_speed(star_mass, earth_orbit_radius);
 
-    // Velo is perpendicular to the radius
+    // Earth-style orbit around the Sun.
     Body planet_a = make_body(
-        center_x + orbit_a_radius,
-        center_y,
+        earth_orbit_radius,
         0.0,
-        -orbit_a_speed,
-        14.0,
-        6.0,
+        0.0,
+        orbit_a_speed,
+        EARTH_MASS,
+        EARTH_RADIUS,
         blue_color
     );
 
-    const double orbit_b_radius = 320.0;
-    const double orbit_b_speed = circular_orbit_speed(star_mass, orbit_b_radius);
+    const double orbit_b_speed = circular_orbit_speed(star_mass, mars_orbit_radius);
 
-    // a little under circular speed so the orbit is a bit more interesting
+    // Mars-style outer orbit in the opposite phase.
     Body planet_b = make_body(
-        center_x - orbit_b_radius,
-        center_y,
+        -mars_orbit_radius,
         0.0,
-        orbit_b_speed * 0.92,
-        26.0,
-        8.0,
+        0.0,
+        -orbit_b_speed,
+        6.4171e23,
+        3.3895e6,
         red_color
     );
     sim->body_count = 3;
@@ -97,17 +95,15 @@ static void load_chaotic_three_body_scene(Simulation *sim) {
     const SDL_Color color_b = {255, 120, 150, 255};
     const SDL_Color color_c = {160, 255, 190, 255};
 
-    const double center_x = WINDOW_WIDTH * 0.5;
-    const double center_y = WINDOW_HEIGHT *0.5;
-    const double mass = 260.0;
-    const double radius = radius_from_mass(mass);
+    const double mass = 0.65 * SOLAR_MASS;
+    const double radius = 0.65 * SOLAR_RADIUS;
 
     clear_simulation(sim);
 
     sim->body_count = 3;
-    sim->bodies[0] = make_body(center_x - 135.0, center_y - 55.0, 20.0, -24.0, mass, radius, color_a);
-    sim->bodies[1] = make_body(center_x + 120.0, center_y + 10.0, -16.0, 22.0, mass, radius, color_b);
-    sim->bodies[2] = make_body(center_x + 15.0, center_y + 145.0, -6.0, -5.0, mass, radius, color_c);
+    sim->bodies[0] = make_body(-0.70 * AU, -0.15 * AU, 12000.0, -14000.0, mass, radius, color_a);
+    sim->bodies[1] = make_body(0.70 * AU, -0.15 * AU, -11000.0, 16000.0, mass, radius, color_b);
+    sim->bodies[2] = make_body(0.08 * AU, 0.62 * AU, -5000.0, -3000.0, mass, radius, color_c);
 
     finalise_scene(sim);
 }
@@ -117,25 +113,23 @@ static void load_binary_stars_scene(Simulation *sim) {
     const SDL_Color star_b_color = {255, 170, 120, 255};
     const SDL_Color planet_color = {120, 200, 255, 255};
 
-    const double center_x = WINDOW_WIDTH * 0.5;
-    const double center_y = WINDOW_HEIGHT *0.5;
-    const double star_mass = 1200.0;
-    const double star_radius = radius_from_mass(star_mass);
-    const double star_seperation = 260.0;
+    const double star_mass = 0.80 * SOLAR_MASS;
+    const double star_radius = 0.80 * SOLAR_RADIUS;
+    const double star_seperation = 1.20 * AU;
 
     // Equal mass binary: each star feels gravity from the other star and orbits barycenter, solving F = mv^2 / r -> v = sqrt(G*M/(2*d)) where M is the mass of the other star and D is the full seperation
 
     const double star_speed = sqrt((G * star_mass)/ (2.0 * star_seperation));
 
-    const double planet_radius_from_center = 420.0;
-    const double planet_speed = circular_orbit_speed(star_mass * 2.0, planet_radius_from_center) * 0.94;
+    const double planet_radius_from_center = 2.20 * AU;
+    const double planet_speed = circular_orbit_speed(star_mass * 2.0, planet_radius_from_center) * 0.97;
 
     clear_simulation(sim);
 
     sim->body_count = 3;
     sim->bodies[0] = make_body(
-        center_x - (star_seperation * 0.5),
-        center_y,
+        -(star_seperation * 0.5),
+        0.0,
         0.0,
         -star_speed,
         star_mass,
@@ -143,8 +137,8 @@ static void load_binary_stars_scene(Simulation *sim) {
         star_a_color
     );
     sim->bodies[1] = make_body(
-        center_x + (star_seperation *0.5),
-        center_y,
+        star_seperation *0.5,
+        0.0,
         0.0,
         star_speed,
         star_mass,
@@ -152,12 +146,12 @@ static void load_binary_stars_scene(Simulation *sim) {
         star_b_color
     );
     sim->bodies[2] = make_body(
-        center_x,
-        center_y - planet_radius_from_center,
+        0.0,
+        planet_radius_from_center,
         planet_speed,
         0.0,
-        18.0,
-        radius_from_mass(18.0),
+        0.5 * EARTH_MASS,
+        radius_from_mass(0.5 * EARTH_MASS),
         planet_color
     );
     finalise_scene(sim);
