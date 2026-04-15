@@ -123,40 +123,63 @@ Body make_body(double x, double y, double vx, double vy, double mass, double rad
     return body;
 }
 
-void step_simulation(Simulation *sim, double dt) {
-    Vec2 accelerations[MAX_BODIES] = {0};
+static void compute_accelerations(const Simulation *sim, Vec2 accelerations[MAX_BODIES]) {
+    for (int i = 0; i < MAX_BODIES; i++) {
+        accelerations[i] = vec2(0.0, 0.0);
+    }
 
-    // Pairwise gravity: compute each interaction once then update both bodies symmetrically
+    // Compute each pair once and apply equal-and-opposite accelerations.
     for (int i = 0; i < sim->body_count; i++) {
         for (int j = i + 1; j < sim->body_count; j++) {
             Vec2 delta = vec_sub(sim->bodies[j].position, sim->bodies[i].position);
 
-            // Softening keeps the force from going absurdly high at tiny distances
+            // Softening keeps the force from going really high at tiny distances.
             double distance_sq = vec_length_sq(delta) + (SOFTENING * SOFTENING);
             double distance = sqrt(distance_sq);
             double inv_distance_cubed = 1.0 / (distance_sq * distance);
 
-            // Vector version of gravity: a = G * m_other * delta / |delta|^3
+            // a = G * m_other * delta / |delta|^3
             Vec2 direction_term = vec_scale(delta, inv_distance_cubed);
 
             accelerations[i] = vec_add(
                 accelerations[i],
                 vec_scale(direction_term, G * sim->bodies[j].mass)
             );
+
             accelerations[j] = vec_sub(
                 accelerations[j],
                 vec_scale(direction_term, G * sim->bodies[i].mass)
             );
         }
     }
+}
+void step_simulation(Simulation *sim, double dt) {
+    Vec2 accelerations_before[MAX_BODIES];
+    Vec2 accelerations_after[MAX_BODIES];
 
-    for (int i = 0; i < sim->body_count; i++){
+    compute_accelerations(sim, accelerations_before);
+
+    for (int i = 0; i < sim->body_count; i++) {
         Body *body = &sim->bodies[i];
 
-        //Semi-implicit Euler: first update velo from acceleration, then move using new velo
-        body->velocity = vec_add(body->velocity, vec_scale(accelerations[i], dt));
-        body->position = vec_add(body->position, vec_scale(body->velocity, dt));
+        //Velo Verlet position step: x(t+dt) = x(t) + v(t)dt + 1/2 a(t)dt^2
+        Vec2 position_step = vec_add(
+            vec_scale(body->velocity, dt),
+            vec_scale(accelerations_before[i], 0.5 * dt * dt)
+        );
 
-        push_trail_point(body);
+        body->position = vec_add(body->position, position_step);
+    }
+    compute_accelerations(sim, accelerations_after);
+    for (int i = 0; i < sim->body_count; i++) {
+        Body *body = &sim->bodies[i];
+
+        //Velo verlet velocity step: v(t+dt) = v(t) + 1/2 (a_old + a_new) dt
+        Vec2 average_accelration = vec_scale(
+            vec_add(accelerations_before[i], accelerations_after[i]),
+            0.5
+        );
+         body->velocity = vec_add(body->velocity, vec_scale(average_accelration, dt));
+         push_trail_point(body);
     }
 }
