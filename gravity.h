@@ -49,6 +49,14 @@ typedef struct {
     int body_count;
 } Simulation;
 
+typedef struct {
+    double kinetic_energy;
+    double potential_energy;
+    double total_energy;
+    Vec2 total_momentum;
+    double angular_momentum_z;
+} SimulationDiagnostics;
+
 typedef enum {
     SCENE_EMPTY = 0,
     SCENE_STARTER = 1,

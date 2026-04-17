@@ -47,15 +47,24 @@ int main(void) {
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
+    if (!init_render_resources()) {
+        fprintf(stderr, "Failed to initialize render resources\n");
+        SDL_DestroyRenderer(renderer);
+        SDL_DestroyWindow(window);
+        SDL_Quit();
+        return 1;
+    }
+
     Simulation initial_state = {0};
     Simulation sim = {0};
     SpawnState spawn = {0};
     ScenePreset current_scene = SCENE_STARTER;
     double accumulator = 0.0;
+    double simulated_time_seconds = 0.0;
     int time_scale_index = DEFAULT_TIME_SCALE_INDEX;
     bool hud_visible = true;
 
-    activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator);
+    activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator, &simulated_time_seconds);
 
     spawn.mass = EARTH_MASS;
     spawn.color_index = 0;
@@ -92,7 +101,8 @@ int main(void) {
                         break;
 
                     case SDLK_r:
-                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator);
+                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
+                                       &simulated_time_seconds);
                         break;
 
                     case SDLK_h:
@@ -105,22 +115,26 @@ int main(void) {
 
                     case SDLK_0:
                         current_scene = SCENE_EMPTY;
-                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator);
+                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
+                                       &simulated_time_seconds);
                         break;
 
                     case SDLK_1:
                         current_scene = SCENE_STARTER;
-                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator);
+                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
+                                       &simulated_time_seconds);
                         break;
 
                     case SDLK_2:
                         current_scene = SCENE_CHAOTIC_3_BODY;
-                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator);
+                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
+                                       &simulated_time_seconds);
                         break;
 
                     case SDLK_3:
                         current_scene = SCENE_BINARY_STARS;
-                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator);
+                        activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
+                                       &simulated_time_seconds);
                         break;
 
                     case SDLK_LEFTBRACKET:
@@ -215,14 +229,18 @@ int main(void) {
 
             while (accumulator >= FIXED_DT) {
                 step_simulation(&sim, FIXED_DT);
+                simulated_time_seconds += FIXED_DT;
                 accumulator -= FIXED_DT;
             }
         }
+        SimulationDiagnostics diagnostics = compute_diagnostics(&sim);
         update_window_title(window, &sim, &spawn, current_scene, paused, TIME_SCALE_OPTIONS[time_scale_index]);
         render_simulation(
             renderer,
             &sim,
             &spawn,
+            &diagnostics,
+            simulated_time_seconds,
             current_scene,
             paused,
             hud_visible,
@@ -231,6 +249,7 @@ int main(void) {
             time_scale_count
         );
     }
+    shutdown_render_resources();
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
     SDL_Quit();

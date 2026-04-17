@@ -1,7 +1,7 @@
 CC = gcc
 
-CFLAGS = -std=c11 -Wall -Wextra -pedantic $(shell pkg-config --cflags sdl2)
-LDFLAGS = $(shell pkg-config --libs sdl2) -lm
+CFLAGS = -std=c11 -Wall -Wextra -pedantic $(shell pkg-config --cflags sdl2 SDL2_ttf)
+LDFLAGS = $(shell pkg-config --libs sdl2 SDL2_ttf) -lm
 
 TARGET = gravity_sim
 

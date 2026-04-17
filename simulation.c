@@ -123,6 +123,39 @@ Body make_body(double x, double y, double vx, double vy, double mass, double rad
     return body;
 }
 
+SimulationDiagnostics compute_diagnostics(const Simulation *sim) {
+    SimulationDiagnostics diagnostics = {0};
+
+    for (int i = 0; i < sim->body_count; i++) {
+        const Body *body = &sim->bodies[i];
+
+        diagnostics.kinetic_energy += 0.5 * body->mass * vec_length_sq(body->velocity);
+        diagnostics.total_momentum = vec_add(
+            diagnostics.total_momentum,
+            vec_scale(body->velocity, body->mass)
+        );
+
+        // In a 2D simulation, the angular momentum vector only has a z component.
+        diagnostics.angular_momentum_z +=
+            body->mass * ((body->position.x * body->velocity.y) -
+                          (body->position.y * body->velocity.x));
+    }
+
+    for (int i = 0; i < sim->body_count; i++) {
+        for (int j = i + 1; j < sim->body_count; j++) {
+            Vec2 delta = vec_sub(sim->bodies[j].position, sim->bodies[i].position);
+            double softened_distance = sqrt(vec_length_sq(delta) + (SOFTENING * SOFTENING));
+
+            // Use the softened potential that matches the softened force law.
+            diagnostics.potential_energy +=
+                (-G * sim->bodies[i].mass * sim->bodies[j].mass) / softened_distance;
+        }
+    }
+
+    diagnostics.total_energy = diagnostics.kinetic_energy + diagnostics.potential_energy;
+    return diagnostics;
+}
+
 static void compute_accelerations(const Simulation *sim, Vec2 accelerations[MAX_BODIES]) {
     for (int i = 0; i < MAX_BODIES; i++) {
         accelerations[i] = vec2(0.0, 0.0);

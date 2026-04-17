@@ -17,6 +17,7 @@ bool add_body(Simulation *sim, Body body);
 void push_trail_point(Body *body);
 void reset_trail(Body *body);
 Body make_body(double x, double y, double vx, double vy, double mass, double radius, SDL_Color color);
+SimulationDiagnostics compute_diagnostics(const Simulation *sim);
 void step_simulation(Simulation *sim, double dt);
 
 #endif

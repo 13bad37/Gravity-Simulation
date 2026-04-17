@@ -192,10 +192,12 @@ static void load_scene(Simulation *sim, ScenePreset preset) {
     }
 }
 
-void activate_scene(ScenePreset preset, Simulation *initial_state, Simulation *sim, SpawnState *spawn, double *accumulator) {
+void activate_scene(ScenePreset preset, Simulation *initial_state, Simulation *sim,
+                    SpawnState *spawn, double *accumulator, double *simulated_time_seconds) {
     load_scene(initial_state, preset);
     *sim = *initial_state;
     *accumulator = 0.0;
+    *simulated_time_seconds = 0.0;
     spawn->active = false;
     spawn->color_index = 0;
 }
