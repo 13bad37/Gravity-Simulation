@@ -55,7 +55,16 @@ static void load_starter_scene(Simulation *sim) {
     const double earth_orbit_radius = AU;
     const double star_mass = SOLAR_MASS;
 
-    Body star = make_body(0.0, 0.0, 0.0, 0.0, star_mass, SOLAR_RADIUS, star_color);
+    Body star = make_body(
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        star_mass,
+        SOLAR_RADIUS,
+        density_from_mass_radius(star_mass, SOLAR_RADIUS),
+        star_color
+    );
 
     const double orbit_a_speed = circular_orbit_speed(star_mass, earth_orbit_radius);
 
@@ -67,6 +76,7 @@ static void load_starter_scene(Simulation *sim) {
         orbit_a_speed,
         EARTH_MASS,
         EARTH_RADIUS,
+        density_from_mass_radius(EARTH_MASS, EARTH_RADIUS),
         blue_color
     );
 
@@ -80,6 +90,7 @@ static void load_starter_scene(Simulation *sim) {
         -orbit_b_speed,
         6.4171e23,
         3.3895e6,
+        density_from_mass_radius(6.4171e23, 3.3895e6),
         red_color
     );
     sim->body_count = 3;
@@ -101,9 +112,36 @@ static void load_chaotic_three_body_scene(Simulation *sim) {
     clear_simulation(sim);
 
     sim->body_count = 3;
-    sim->bodies[0] = make_body(-0.70 * AU, -0.15 * AU, 12000.0, -14000.0, mass, radius, color_a);
-    sim->bodies[1] = make_body(0.70 * AU, -0.15 * AU, -11000.0, 16000.0, mass, radius, color_b);
-    sim->bodies[2] = make_body(0.08 * AU, 0.62 * AU, -5000.0, -3000.0, mass, radius, color_c);
+    sim->bodies[0] = make_body(
+        -0.70 * AU,
+        -0.15 * AU,
+        12000.0,
+        -14000.0,
+        mass,
+        radius,
+        density_from_mass_radius(mass, radius),
+        color_a
+    );
+    sim->bodies[1] = make_body(
+        0.70 * AU,
+        -0.15 * AU,
+        -11000.0,
+        16000.0,
+        mass,
+        radius,
+        density_from_mass_radius(mass, radius),
+        color_b
+    );
+    sim->bodies[2] = make_body(
+        0.08 * AU,
+        0.62 * AU,
+        -5000.0,
+        -3000.0,
+        mass,
+        radius,
+        density_from_mass_radius(mass, radius),
+        color_c
+    );
 
     finalise_scene(sim);
 }
@@ -134,6 +172,7 @@ static void load_binary_stars_scene(Simulation *sim) {
         -star_speed,
         star_mass,
         star_radius,
+        density_from_mass_radius(star_mass, star_radius),
         star_a_color
     );
     sim->bodies[1] = make_body(
@@ -143,6 +182,7 @@ static void load_binary_stars_scene(Simulation *sim) {
         star_speed,
         star_mass,
         star_radius,
+        density_from_mass_radius(star_mass, star_radius),
         star_b_color
     );
     sim->bodies[2] = make_body(
@@ -152,6 +192,7 @@ static void load_binary_stars_scene(Simulation *sim) {
         0.0,
         0.5 * EARTH_MASS,
         radius_from_mass(0.5 * EARTH_MASS),
+        EARTH_DENSITY,
         planet_color
     );
     finalise_scene(sim);

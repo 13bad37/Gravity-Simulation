@@ -35,6 +35,8 @@ typedef struct {
     Vec2 velocity;
     double mass;
     double radius;
+    double density;
+    double spin_angular_momentum;
     SDL_Color color;
 
     // Ring buffer for trail
@@ -71,5 +73,10 @@ typedef struct {
     double mass;
     int color_index;
 } SpawnState;
+
+typedef struct {
+    Vec2 center;
+    double meters_per_pixel;
+} Camera;
 
 #endif

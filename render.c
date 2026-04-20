@@ -74,22 +74,24 @@ void shutdown_render_resources(void) {
     }
 }
 
-static SDL_Point world_to_screen(Vec2 world) {
+static SDL_Point world_to_screen(Vec2 world, const Camera *camera) {
     SDL_Point point;
-    point.x = (int)lround((WINDOW_WIDTH * 0.5) + (world.x / VIEW_METERS_PER_PIXEL));
-    point.y = (int)lround((WINDOW_HEIGHT * 0.5) - (world.y / VIEW_METERS_PER_PIXEL));
+    point.x = (int)lround((WINDOW_WIDTH * 0.5) +
+                          ((world.x - camera->center.x) / camera->meters_per_pixel));
+    point.y = (int)lround((WINDOW_HEIGHT * 0.5) -
+                          ((world.y - camera->center.y) / camera->meters_per_pixel));
     return point;
 }
 
-Vec2 screen_to_world(int screen_x, int screen_y) {
+Vec2 screen_to_world(int screen_x, int screen_y, const Camera *camera) {
     return vec2(
-        ((double)screen_x - (WINDOW_WIDTH * 0.5)) * VIEW_METERS_PER_PIXEL,
-        ((WINDOW_HEIGHT * 0.5) - (double)screen_y) * VIEW_METERS_PER_PIXEL
+        camera->center.x + (((double)screen_x - (WINDOW_WIDTH * 0.5)) * camera->meters_per_pixel),
+        camera->center.y + (((WINDOW_HEIGHT * 0.5) - (double)screen_y) * camera->meters_per_pixel)
     );
 }
 
-static int draw_radius_pixels(double physical_radius) {
-    double real_radius_pixels = physical_radius / VIEW_METERS_PER_PIXEL;
+static int draw_radius_pixels(double physical_radius, const Camera *camera) {
+    double real_radius_pixels = physical_radius / camera->meters_per_pixel;
 
     // Real radii are too small to read at orbital scale, so the renderer
     // compresses visible size while leaving the physical radius untouched.
@@ -187,7 +189,7 @@ static void draw_filled_circle(SDL_Renderer *renderer, int cx, int cy, int radiu
     }
 }
 
-static void draw_trail(SDL_Renderer *renderer, const Body *body) {
+static void draw_trail(SDL_Renderer *renderer, const Body *body, const Camera *camera) {
     if (body->trail_count < 2) {
         return;
     }
@@ -199,15 +201,15 @@ static void draw_trail(SDL_Renderer *renderer, const Body *body) {
         int index_b = (oldest + i) % TRAIL_LENGTH;
         double t = (double)i / (double)(body->trail_count - 1);
         Uint8 alpha = (Uint8)(20.0 + (160.0 * t));
-        SDL_Point point_a = world_to_screen(body->trail[index_a]);
-        SDL_Point point_b = world_to_screen(body->trail[index_b]);
+        SDL_Point point_a = world_to_screen(body->trail[index_a], camera);
+        SDL_Point point_b = world_to_screen(body->trail[index_b], camera);
 
         SDL_SetRenderDrawColor(renderer, body->color.r, body->color.g, body->color.b, alpha);
         SDL_RenderDrawLine(renderer, point_a.x, point_a.y, point_b.x, point_b.y);
     }
 }
 
-static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn) {
+static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn, const Camera *camera) {
     if (!spawn->active) {
         return;
     }
@@ -215,8 +217,8 @@ static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn) 
     SDL_Color color = current_spawn_color(spawn);
     SDL_Color ghost_color = color;
     SDL_Color cursor_color = {255, 255, 255, 180};
-    SDL_Point start = world_to_screen(spawn->start);
-    SDL_Point current = world_to_screen(spawn->current);
+    SDL_Point start = world_to_screen(spawn->start, camera);
+    SDL_Point current = world_to_screen(spawn->current, camera);
 
     ghost_color.a = 120;
 
@@ -227,7 +229,7 @@ static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn) 
         renderer,
         start.x,
         start.y,
-        draw_radius_pixels(radius_from_mass(spawn->mass)),
+        draw_radius_pixels(radius_from_mass(spawn->mass), camera),
         ghost_color
     );
 
@@ -236,7 +238,7 @@ static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn) 
 
 static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnState *spawn,
                      const SimulationDiagnostics *diagnostics, double simulated_time_seconds,
-                     ScenePreset scene, bool paused, double time_scale,
+                     const Camera *camera, ScenePreset scene, bool paused, double time_scale,
                      int time_scale_index, int time_scale_count) {
     const SDL_Color title_color = {255, 214, 140, 255};
     const SDL_Color text_color = {228, 233, 245, 255};
@@ -252,6 +254,7 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     int body_step;
     int panel_height;
     double simulated_days = simulated_time_seconds / 86400.0;
+    double view_km_per_pixel = camera->meters_per_pixel / 1000.0;
     double momentum_magnitude;
 
     if (diagnostics == NULL) {
@@ -261,7 +264,7 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     momentum_magnitude = vec_magnitude(diagnostics->total_momentum);
     title_height = TTF_FontHeight(g_hud_title_font);
     body_step = TTF_FontLineSkip(g_hud_body_font) + 1;
-    panel_height = 28 + title_height + 18 + (17 * body_step) + 18;
+    panel_height = 28 + title_height + 18 + (18 * body_step) + 18;
 
     draw_panel(renderer, panel_x, panel_y, panel_width, panel_height);
     draw_text_line(renderer, g_hud_title_font, text_x, panel_y + 14, title_color, "Gravity Sim");
@@ -283,6 +286,10 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     snprintf(line, sizeof(line), "Time scale: %.3gx", time_scale);
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
     draw_time_scale_bar(renderer, panel_x + 302, line_y + 5, 150, 10, time_scale_index, time_scale_count);
+    line_y += body_step;
+
+    snprintf(line, sizeof(line), "View scale: %.3g km/px", view_km_per_pixel);
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
     line_y += body_step;
 
     snprintf(line, sizeof(line), "Bodies: %d/%d", sim->body_count, MAX_BODIES);
@@ -318,44 +325,44 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
     line_y += body_step + 4;
 
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "LMB drag spawn");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "LMB drag spawn, RMB cancel");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "RMB cancel");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Wheel zoom, Q/E zoom");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Wheel / [ ] mass");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Middle drag or WASD pan");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "- / = time, T reset");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "[ ] mass, Shift wheel mass");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "0-3 scenes, R reset");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "- / = time, T reset, C camera");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Space pause, H hide HUD");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "0-3 scenes, R reset, Space pause");
 }
 
 void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const SpawnState *spawn,
                        const SimulationDiagnostics *diagnostics, double simulated_time_seconds,
-                       ScenePreset scene, bool paused, bool hud_visible,
+                       const Camera *camera, ScenePreset scene, bool paused, bool hud_visible,
                        double time_scale, int time_scale_index, int time_scale_count) {
     SDL_SetRenderDrawColor(renderer, 8, 12, 20, 255);
     SDL_RenderClear(renderer);
 
     for (int i = 0; i < sim->body_count; i++) {
-        draw_trail(renderer, &sim->bodies[i]);
+        draw_trail(renderer, &sim->bodies[i], camera);
     }
 
     for (int i = 0; i < sim->body_count; i++) {
         const Body *body = &sim->bodies[i];
-        SDL_Point point = world_to_screen(body->position);
+        SDL_Point point = world_to_screen(body->position, camera);
 
         draw_filled_circle(
             renderer,
             point.x,
             point.y,
-            draw_radius_pixels(body->radius),
+            draw_radius_pixels(body->radius, camera),
             body->color
         );
     }
 
-    draw_spawn_preview(renderer, spawn);
+    draw_spawn_preview(renderer, spawn, camera);
 
     if (hud_visible) {
         draw_hud(
@@ -364,6 +371,7 @@ void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const Spaw
             spawn,
             diagnostics,
             simulated_time_seconds,
+            camera,
             scene,
             paused,
             time_scale,
@@ -376,19 +384,20 @@ void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const Spaw
 }
 
 void update_window_title(SDL_Window *window, const Simulation *sim, const SpawnState *spawn,
-                         ScenePreset scene, bool paused, double time_scale) {
+                         const Camera *camera, ScenePreset scene, bool paused, double time_scale) {
     char title[256];
 
     snprintf(
         title,
         sizeof(title),
-        "Gravity Sim | %s | scene %s | bodies %d/%d | spawn %.2f Earth masses | time %.3gx",
+        "Gravity Sim | %s | scene %s | bodies %d/%d | spawn %.2f Earth masses | time %.3gx | %.3g km/px",
         paused ? "paused" : "running",
         scene_name(scene),
         sim->body_count,
         MAX_BODIES,
         spawn->mass / EARTH_MASS,
-        time_scale
+        time_scale,
+        camera->meters_per_pixel / 1000.0
     );
     SDL_SetWindowTitle(window, title);
 }
