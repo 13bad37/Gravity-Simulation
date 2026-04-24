@@ -1,0 +1,42 @@
+name: Update Roadmap Badge
+
+on:
+  push:
+    paths:
+      - README.md
+      - scripts/update_roadmap_badge.py
+      - .github/workflows/roadmap-progress.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-roadmap-badge:
+    if: github.ref_name == github.event.repository.default_branch && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Regenerate roadmap badge
+        run: python3 scripts/update_roadmap_badge.py
+
+      - name: Commit updated badge
+        run: |
+          if git diff --quiet -- assets/badges/roadmap-progress.svg; then
+            echo "Roadmap badge is already up to date."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add assets/badges/roadmap-progress.svg
+          git commit -m "Update roadmap progress badge"
+          git push
