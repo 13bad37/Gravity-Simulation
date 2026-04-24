@@ -11,7 +11,8 @@ README_PATH = Path("README.md")
 ROADMAP_HEADING = re.compile(r"^##\s+Roadmap\s*$")
 H2_HEADING = re.compile(r"^##\s+")
 CHECKBOX = re.compile(r"^\s*-\s*\[([ xX])\]\s+")
-ROADMAP_BADGE = re.compile(r'(<img alt="Roadmap progress" src=")([^"]+)("([^>]*)/>)')
+ROADMAP_BADGE_TAG = re.compile(r'<img\b[^>]*\balt="Roadmap progress"[^>]*>')
+IMG_SRC = re.compile(r'\bsrc="[^"]*"')
 
 
 def extract_roadmap_lines(readme_text: str) -> list[str]:
@@ -77,10 +78,18 @@ def main() -> None:
     progress = done / total
 
     badge_url = build_badge_url(done, total, pick_color(progress))
-    updated_readme = ROADMAP_BADGE.sub(rf'\1{badge_url}\3', readme_text, count=1)
+
+    badge_tag_match = ROADMAP_BADGE_TAG.search(readme_text)
+    if badge_tag_match is None:
+        raise RuntimeError("Could not find the roadmap badge image in README.md")
+
+    badge_tag = badge_tag_match.group(0)
+    updated_badge_tag = IMG_SRC.sub(f'src="{badge_url}"', badge_tag, count=1)
+    updated_readme = readme_text.replace(badge_tag, updated_badge_tag, 1)
 
     if updated_readme == readme_text:
-        raise RuntimeError("Could not find the roadmap badge image in README.md")
+        print("Roadmap badge is already up to date.")
+        return
 
     README_PATH.write_text(updated_readme, encoding="utf-8")
 
