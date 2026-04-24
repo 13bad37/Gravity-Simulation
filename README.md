@@ -9,7 +9,6 @@
 
 <p align="center">
   <img alt="Status active development" src="https://img.shields.io/badge/Status-Active%20Development-1f6feb?style=for-the-badge" />
-  <img alt="Target cross platform" src="https://img.shields.io/badge/Target-Cross--Platform-6f42c1?style=for-the-badge" />
   <img alt="Roadmap progress" src="https://img.shields.io/badge/Roadmap-17%2F26%20complete-b08900?style=for-the-badge" height="28" />
 </p>
 
