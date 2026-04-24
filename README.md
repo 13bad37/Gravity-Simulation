@@ -12,7 +12,7 @@
   <img alt="Roadmap progress" src="https://img.shields.io/badge/Roadmap-17%2F26%20complete-b08900?style=for-the-badge" height="28" />
 </p>
 
-GravitySim is a real-time 2D gravity simulation written in C with SDL2. It started as a fun curiosity project, but the direction changed pretty quickly. The goal now is to keep the interaction side enjoyable while pushing the simulation itself toward more defensible physics and better numerical behaviour.
+This is a real time 2D gravity simulation written in C with SDL2. It started as a fun curiosity project, but the direction changed pretty quickly. The goal now is to keep the interaction side enjoyable while pushing the simulation itself toward more defensible physics and better numerical behaviour.
 
 The current build already supports physically meaningful units, velocity Verlet integration, preset scenes, interactive spawning, collision merging, camera controls, and live diagnostics for energy, momentum, angular momentum, and drift. It is still actively being built out, but the foundation is in place and the roadmap is clear.
 
@@ -41,7 +41,7 @@ The current build already supports physically meaningful units, velocity Verlet 
 
 ## Current Feature Set
 
-- Real-time N-body gravity simulation in C
+- Real time N body gravity simulation in C
 - SDL2 rendering with trails, HUD, and camera controls
 - Physically meaningful simulation units
 - Velocity Verlet integration for better orbital stability
