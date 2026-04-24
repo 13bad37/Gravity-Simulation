@@ -237,12 +237,13 @@ static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn, 
 }
 
 static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnState *spawn,
-                     const SimulationDiagnostics *diagnostics, double simulated_time_seconds,
-                     const Camera *camera, ScenePreset scene, bool paused, double time_scale,
-                     int time_scale_index, int time_scale_count) {
+                     const SimulationDiagnostics *diagnostics, const SimulationDrift *drift,
+                     double simulated_time_seconds, const Camera *camera, ScenePreset scene,
+                     bool paused, double time_scale, int time_scale_index, int time_scale_count) {
     const SDL_Color title_color = {255, 214, 140, 255};
     const SDL_Color text_color = {228, 233, 245, 255};
     SimulationDiagnostics zero_diagnostics = {0};
+    SimulationDrift zero_drift = {0};
     char line[160];
     char value[64];
     int panel_x = 18;
@@ -261,10 +262,14 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
         diagnostics = &zero_diagnostics;
     }
 
+    if (drift == NULL) {
+        drift = &zero_drift;
+    }
+
     momentum_magnitude = vec_magnitude(diagnostics->total_momentum);
     title_height = TTF_FontHeight(g_hud_title_font);
     body_step = TTF_FontLineSkip(g_hud_body_font) + 1;
-    panel_height = 28 + title_height + 18 + (18 * body_step) + 18;
+    panel_height = 28 + title_height + 18 + (21 * body_step) + 18;
 
     draw_panel(renderer, panel_x, panel_y, panel_width, panel_height);
     draw_text_line(renderer, g_hud_title_font, text_x, panel_y + 14, title_color, "Gravity Sim");
@@ -325,6 +330,18 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
     line_y += body_step + 4;
 
+    snprintf(line, sizeof(line), "Drift dE: %.3e", drift->energy_relative);
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
+    line_y += body_step;
+
+    snprintf(line, sizeof(line), "Drift dP: %.3e", drift->momentum_relative);
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
+    line_y += body_step;
+
+    snprintf(line, sizeof(line), "Drift dL: %.3e", drift->angular_momentum_relative);
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
+    line_y += body_step + 4;
+
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "LMB drag spawn, RMB cancel");
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Wheel zoom, Q/E zoom");
@@ -335,13 +352,16 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "- / = time, T reset, C camera");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "0-3 scenes, R reset, Space pause");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "0-3 scenes, R reset, B baseline");
+    line_y += body_step;
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Space pause, H hide HUD");
 }
 
 void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const SpawnState *spawn,
-                       const SimulationDiagnostics *diagnostics, double simulated_time_seconds,
-                       const Camera *camera, ScenePreset scene, bool paused, bool hud_visible,
-                       double time_scale, int time_scale_index, int time_scale_count) {
+                       const SimulationDiagnostics *diagnostics, const SimulationDrift *drift,
+                       double simulated_time_seconds, const Camera *camera, ScenePreset scene,
+                       bool paused, bool hud_visible, double time_scale,
+                       int time_scale_index, int time_scale_count) {
     SDL_SetRenderDrawColor(renderer, 8, 12, 20, 255);
     SDL_RenderClear(renderer);
 
@@ -370,6 +390,7 @@ void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const Spaw
             sim,
             spawn,
             diagnostics,
+            drift,
             simulated_time_seconds,
             camera,
             scene,

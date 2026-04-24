@@ -59,6 +59,23 @@ typedef struct {
     double angular_momentum_z;
 } SimulationDiagnostics;
 
+typedef struct 
+{
+    SimulationDiagnostics diagnostics;
+    double energy_scale;
+    double momentum_scale;
+    double angular_momentum_scale;
+    bool valid;
+} DiagnosticsBaseline;
+
+typedef struct 
+{
+    double energy_relative;
+    double momentum_relative;
+    double angular_momentum_relative;
+} SimulationDrift; 
+
+
 typedef enum {
     SCENE_EMPTY = 0,
     SCENE_STARTER = 1,

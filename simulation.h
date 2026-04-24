@@ -21,6 +21,8 @@ void push_trail_point(Body *body);
 void reset_trail(Body *body);
 Body make_body(double x, double y, double vx, double vy, double mass, double radius, double density, SDL_Color color);
 SimulationDiagnostics compute_diagnostics(const Simulation *sim);
+DiagnosticsBaseline make_diagnostics_baseline(const Simulation *sim);
+SimulationDrift compute_diagnostics_drift(const SimulationDiagnostics *current, const DiagnosticsBaseline *baseline);
 void step_simulation(Simulation *sim, double dt);
 
 #endif

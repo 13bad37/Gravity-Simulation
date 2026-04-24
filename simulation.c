@@ -51,6 +51,10 @@ static double vec_length_sq(Vec2 v) {
     return (v.x * v.x) + (v.y * v.y);
 }
 
+static double vec_length(Vec2 v) {
+    return sqrt(vec_length_sq(v));
+}
+
 static double clamp_double(double value, double min_value, double max_value) {
     if (value < min_value) {
         return min_value;
@@ -299,6 +303,48 @@ SimulationDiagnostics compute_diagnostics(const Simulation *sim) {
     diagnostics.total_energy = diagnostics.kinetic_energy + diagnostics.potential_energy;
     return diagnostics;
 }
+
+DiagnosticsBaseline make_diagnostics_baseline(const Simulation *sim) {
+    DiagnosticsBaseline baseline = {0};
+    double momentum_scale = 0.0;
+    double angular_scale = 0.0;
+
+    baseline.diagnostics = compute_diagnostics(sim);
+    baseline.energy_scale = fmax(fabs(baseline.diagnostics.total_energy), fabs(baseline.diagnostics.kinetic_energy) + fabs(baseline.diagnostics.potential_energy));
+
+    for (int i = 0; i < sim->body_count; i++) {
+        const Body *body = &sim->bodies[i];
+
+        momentum_scale += vec_length(vec_scale(body->velocity, body->mass));
+        angular_scale += fabs(orbital_angular_momentum_z(body)) + fabs(body->spin_angular_momentum);
+    }
+
+    baseline.energy_scale = fmax(baseline.energy_scale, 1.0);
+    baseline.momentum_scale = fmax(momentum_scale, 1.0);
+    baseline.angular_momentum_scale = fmax(fabs(baseline.diagnostics.angular_momentum_z), angular_scale);
+    baseline.angular_momentum_scale = fmax(baseline.angular_momentum_scale, 1.0);
+    baseline.valid = true;
+    return baseline;
+}
+
+SimulationDrift compute_diagnostics_drift(const SimulationDiagnostics *current, const DiagnosticsBaseline *baseline) {
+    SimulationDrift drift = {0};
+    Vec2 momentum_delta;
+
+    if (current == NULL || baseline == NULL || !baseline->valid) {
+        return drift;
+    }
+
+    drift.energy_relative = (current->total_energy - baseline->diagnostics.total_energy) / baseline->energy_scale;
+
+    momentum_delta = vec_sub(current->total_momentum, baseline->diagnostics.total_momentum);
+    drift.momentum_relative = vec_length(momentum_delta) / baseline->momentum_scale;
+
+    drift.angular_momentum_relative = (current->angular_momentum_z - baseline->diagnostics.angular_momentum_z) / baseline->angular_momentum_scale;
+
+    return drift;
+}
+
 
 static void compute_accelerations(const Simulation *sim, Vec2 accelerations[MAX_BODIES]) {
     for (int i = 0; i < MAX_BODIES; i++) {

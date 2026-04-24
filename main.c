@@ -104,6 +104,7 @@ int main(void) {
     ScenePreset current_scene = SCENE_STARTER;
     double accumulator = 0.0;
     double simulated_time_seconds = 0.0;
+    DiagnosticsBaseline diagnostics_baseline = {0};
     int time_scale_index = DEFAULT_TIME_SCALE_INDEX;
     bool hud_visible = true;
     bool camera_dragging = false;
@@ -112,6 +113,7 @@ int main(void) {
 
     activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator, &simulated_time_seconds);
     reset_camera(&camera);
+    diagnostics_baseline = make_diagnostics_baseline(&sim);
 
     spawn.mass = EARTH_MASS;
     spawn.color_index = 0;
@@ -151,6 +153,7 @@ int main(void) {
                         activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
                                        &simulated_time_seconds);
                         reset_camera(&camera);
+                        diagnostics_baseline = make_diagnostics_baseline(&sim);
                         break;
 
                     case SDLK_h:
@@ -173,11 +176,16 @@ int main(void) {
                         time_scale_index = DEFAULT_TIME_SCALE_INDEX;
                         break;
 
+                    case SDLK_b:
+                        diagnostics_baseline = make_diagnostics_baseline(&sim);
+                        break;
+
                     case SDLK_0:
                         current_scene = SCENE_EMPTY;
                         activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
                                        &simulated_time_seconds);
                         reset_camera(&camera);
+                        diagnostics_baseline = make_diagnostics_baseline(&sim);
                         break;
 
                     case SDLK_1:
@@ -185,6 +193,7 @@ int main(void) {
                         activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
                                        &simulated_time_seconds);
                         reset_camera(&camera);
+                        diagnostics_baseline = make_diagnostics_baseline(&sim);
                         break;
 
                     case SDLK_2:
@@ -192,6 +201,7 @@ int main(void) {
                         activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
                                        &simulated_time_seconds);
                         reset_camera(&camera);
+                        diagnostics_baseline = make_diagnostics_baseline(&sim);
                         break;
 
                     case SDLK_3:
@@ -199,6 +209,7 @@ int main(void) {
                         activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator,
                                        &simulated_time_seconds);
                         reset_camera(&camera);
+                        diagnostics_baseline = make_diagnostics_baseline(&sim);
                         break;
 
                     case SDLK_LEFTBRACKET:
@@ -352,6 +363,7 @@ int main(void) {
             }
         }
         SimulationDiagnostics diagnostics = compute_diagnostics(&sim);
+        SimulationDrift drift = compute_diagnostics_drift(&diagnostics, &diagnostics_baseline);
         update_window_title(window, &sim, &spawn, &camera, current_scene, paused,
                             TIME_SCALE_OPTIONS[time_scale_index]);
         render_simulation(
@@ -359,6 +371,7 @@ int main(void) {
             &sim,
             &spawn,
             &diagnostics,
+            &drift,
             simulated_time_seconds,
             &camera,
             current_scene,
