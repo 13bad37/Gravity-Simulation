@@ -5,7 +5,9 @@
 
 #include <SDL2/SDL.h>
 #include <math.h>
+#include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 
 // Physics now runs in SI units, so the sim now uses explicit playback rate
 // This is just says 1 real second corresponds to 1 simulated day.
@@ -52,6 +54,79 @@ static void zoom_camera_at(Camera *camera, int screen_x, int screen_y, double zo
 
     Vec2 world_after = screen_to_world(screen_x, screen_y, camera);
     camera->center = vec_add(camera->center, vec_sub(world_before, world_after));
+}
+
+static ScenePreset initial_scene_from_env(ScenePreset fallback) {
+    const char *value = getenv("GRAVITYSIM_START_SCENE");
+
+    if (value == NULL || value[0] == '\0') {
+        return fallback;
+    }
+
+    if (strcmp(value, "0") == 0 || strcmp(value, "empty") == 0) {
+        return SCENE_EMPTY;
+    }
+
+    if (strcmp(value, "1") == 0 || strcmp(value, "starter") == 0) {
+        return SCENE_STARTER;
+    }
+
+    if (strcmp(value, "2") == 0 || strcmp(value, "chaotic") == 0 ||
+        strcmp(value, "three-body") == 0 || strcmp(value, "three_body") == 0) {
+        return SCENE_CHAOTIC_3_BODY;
+    }
+
+    if (strcmp(value, "3") == 0 || strcmp(value, "binary") == 0 ||
+        strcmp(value, "binary-stars") == 0 || strcmp(value, "binary_stars") == 0) {
+        return SCENE_BINARY_STARS;
+    }
+
+    return fallback;
+}
+
+static int initial_time_scale_index_from_env(int fallback, int option_count) {
+    const char *value = getenv("GRAVITYSIM_START_TIME_SCALE");
+    char *end = NULL;
+    double requested;
+    double best_distance;
+    int best_index = fallback;
+
+    if (value == NULL || value[0] == '\0') {
+        return fallback;
+    }
+
+    requested = strtod(value, &end);
+
+    if (end == value) {
+        return fallback;
+    }
+
+    best_distance = fabs(TIME_SCALE_OPTIONS[fallback] - requested);
+
+    for (int i = 0; i < option_count; i++) {
+        double distance = fabs(TIME_SCALE_OPTIONS[i] - requested);
+
+        if (distance < best_distance) {
+            best_distance = distance;
+            best_index = i;
+        }
+    }
+
+    return best_index;
+}
+
+static bool initial_hud_visibility_from_env(bool fallback) {
+    const char *value = getenv("GRAVITYSIM_HIDE_HUD");
+
+    if (value == NULL || value[0] == '\0') {
+        return fallback;
+    }
+
+    if (strcmp(value, "1") == 0 || strcmp(value, "true") == 0 || strcmp(value, "yes") == 0) {
+        return false;
+    }
+
+    return fallback;
 }
 
 int main(void) {
@@ -101,12 +176,13 @@ int main(void) {
     Simulation sim = {0};
     SpawnState spawn = {0};
     Camera camera = {0};
-    ScenePreset current_scene = SCENE_STARTER;
+    ScenePreset current_scene = initial_scene_from_env(SCENE_STARTER);
     double accumulator = 0.0;
     double simulated_time_seconds = 0.0;
     DiagnosticsBaseline diagnostics_baseline = {0};
-    int time_scale_index = DEFAULT_TIME_SCALE_INDEX;
-    bool hud_visible = true;
+    int time_scale_count = (int)(sizeof(TIME_SCALE_OPTIONS) / sizeof(TIME_SCALE_OPTIONS[0]));
+    int time_scale_index = initial_time_scale_index_from_env(DEFAULT_TIME_SCALE_INDEX, time_scale_count);
+    bool hud_visible = initial_hud_visibility_from_env(true);
     bool camera_dragging = false;
     int camera_drag_last_x = 0;
     int camera_drag_last_y = 0;
@@ -123,7 +199,6 @@ int main(void) {
 
     Uint64 previous_counter = SDL_GetPerformanceCounter();
     Uint64 performance_frequency = SDL_GetPerformanceFrequency();
-    int time_scale_count = (int)(sizeof(TIME_SCALE_OPTIONS) / sizeof(TIME_SCALE_OPTIONS[0]));
 
     while (running) {
         Uint64 current_counter = SDL_GetPerformanceCounter();

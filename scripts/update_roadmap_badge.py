@@ -66,7 +66,7 @@ def pick_color(progress: float) -> str:
 
 
 def text_width(text: str) -> int:
-    return 12 + (7 * len(text))
+    return 20 + (9 * len(text))
 
 
 def build_badge(label: str, message: str, color: str) -> str:
@@ -79,25 +79,25 @@ def build_badge(label: str, message: str, color: str) -> str:
     label = html.escape(label)
     message = html.escape(message)
 
-    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{total_width}" height="20" role="img" aria-label="{label}: {message}">
+    return f"""<svg xmlns="http://www.w3.org/2000/svg" width="{total_width}" height="28" role="img" aria-label="{label}: {message}">
   <title>{label}: {message}</title>
   <linearGradient id="smooth" x2="0" y2="100%">
     <stop offset="0" stop-color="#ffffff" stop-opacity=".08"/>
     <stop offset="1" stop-opacity=".08"/>
   </linearGradient>
   <clipPath id="round">
-    <rect width="{total_width}" height="20" rx="3" fill="#fff"/>
+    <rect width="{total_width}" height="28" rx="4" fill="#fff"/>
   </clipPath>
   <g clip-path="url(#round)">
-    <rect width="{label_width}" height="20" fill="#1f2328"/>
-    <rect x="{label_width}" width="{message_width}" height="20" fill="{color}"/>
-    <rect width="{total_width}" height="20" fill="url(#smooth)"/>
+    <rect width="{label_width}" height="28" fill="#1f2328"/>
+    <rect x="{label_width}" width="{message_width}" height="28" fill="{color}"/>
+    <rect width="{total_width}" height="28" fill="url(#smooth)"/>
   </g>
-  <g fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="11">
-    <text x="{label_center}" y="15" fill="#010101" fill-opacity=".3">{label}</text>
-    <text x="{label_center}" y="14">{label}</text>
-    <text x="{message_center}" y="15" fill="#010101" fill-opacity=".3">{message}</text>
-    <text x="{message_center}" y="14">{message}</text>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,DejaVu Sans,sans-serif" font-size="13" font-weight="700">
+    <text x="{label_center}" y="20" fill="#010101" fill-opacity=".3">{label}</text>
+    <text x="{label_center}" y="19">{label}</text>
+    <text x="{message_center}" y="20" fill="#010101" fill-opacity=".3">{message}</text>
+    <text x="{message_center}" y="19">{message}</text>
   </g>
 </svg>
 """

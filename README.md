@@ -1,48 +1,67 @@
 # GravitySim
 
-![Language](https://img.shields.io/badge/language-C-00599C?style=flat-square)
-![Graphics](https://img.shields.io/badge/graphics-SDL2-2ea44f?style=flat-square)
-![Text](https://img.shields.io/badge/text-SDL2_ttf-8a2be2?style=flat-square)
-![Physics First](https://img.shields.io/badge/focus-physics--first-ffb347?style=flat-square)
-![Status](https://img.shields.io/badge/status-active%20development-1f6feb?style=flat-square)
-![Target](https://img.shields.io/badge/target-cross--platform-6f42c1?style=flat-square)
-![Roadmap Progress](assets/badges/roadmap-progress.svg)
+<p align="center">
+  <img alt="Language C" src="https://img.shields.io/badge/Language-C-00599C?style=for-the-badge&logo=c&logoColor=white" />
+  <img alt="Graphics SDL2" src="https://img.shields.io/badge/Graphics-SDL2-2ea44f?style=for-the-badge" />
+  <img alt="Text SDL2_ttf" src="https://img.shields.io/badge/Text-SDL2__ttf-8a2be2?style=for-the-badge" />
+  <img alt="Focus physics first" src="https://img.shields.io/badge/Focus-Physics--First-ffb347?style=for-the-badge" />
+</p>
 
-GravitySim is a real time 2D gravity simulation written in C with SDL2. It started as a fun curiosity project, but my motivation for continuing sort of changed, it was like agame before but now I'm aiming to keep the interaction side as enjoyable as possible while still pushing the actual simulation toward more defensible physics and better numerical behaviour. 
+<p align="center">
+  <img alt="Status active development" src="https://img.shields.io/badge/Status-Active%20Development-1f6feb?style=for-the-badge" />
+  <img alt="Target cross platform" src="https://img.shields.io/badge/Target-Cross--Platform-6f42c1?style=for-the-badge" />
+  <img alt="Roadmap progress" src="assets/badges/roadmap-progress.svg" height="28" />
+</p>
 
-The current build already supports physically meaningful units, velocity Verlet integration, preset scenes, interactive spawning, collision merging, camera controls, and live diagnostics for energy, momentum, angular momentum, and drift. I'm still actively working on it but the foundation is pretty solid and I have a laid out roadmap going forward.
+GravitySim is a real-time 2D gravity simulation written in C with SDL2. It started as a fun curiosity project, but the direction changed pretty quickly. The goal now is to keep the interaction side enjoyable while pushing the simulation itself toward more defensible physics and better numerical behaviour.
+
+The current build already supports physically meaningful units, velocity Verlet integration, preset scenes, interactive spawning, collision merging, camera controls, and live diagnostics for energy, momentum, angular momentum, and drift. It is still actively being built out, but the foundation is in place and the roadmap is clear.
 
 ## Preview
 
-<p align="center">
-  <img src="assets/media/gravitysim-starter.png" alt="GravitySim starter scene with diagnostics HUD" width="61%" />
-  <img src="assets/media/gravitysim-detail.png" alt="Close-up of orbital bodies in GravitySim" width="35%" />
-</p>
+### Default View
 
 <p align="center">
-  <img src="assets/media/gravitysim-demo.gif" alt="Short GravitySim demo clip" width="78%" />
+  <img src="assets/media/gravitysim-starter.png" alt="GravitySim default starter scene with the HUD visible" width="92%" />
 </p>
+
+### Scene Clips
+
+<table align="center">
+  <tr>
+    <th width="33%">Starter Scene</th>
+    <th width="33%">Chaotic Three-Body</th>
+    <th width="33%">Binary Stars</th>
+  </tr>
+  <tr>
+    <td align="center"><img src="assets/media/starter-orbit.gif" alt="Starter scene GIF" width="100%" /></td>
+    <td align="center"><img src="assets/media/chaotic-three-body.gif" alt="Chaotic three-body scene GIF" width="100%" /></td>
+    <td align="center"><img src="assets/media/binary-stars.gif" alt="Binary stars scene GIF" width="100%" /></td>
+  </tr>
+</table>
 
 ## Current Feature Set
 
-- It has real time N body gravity simulation in C
+- Real-time N-body gravity simulation in C
 - SDL2 rendering with trails, HUD, and camera controls
 - Physically meaningful simulation units
 - Velocity Verlet integration for better orbital stability
-- Interactive body spawning with a drag based launch velocity
-- Preset scenes for empty space, a starter system, three body problem, and binary stars
+- Interactive body spawning with drag based launch velocity
+- Preset scenes for empty space, a starter system, three body motion, and binary stars
 - Perfectly inelastic collision merging with mass, momentum, and density aware radius updates
-- Also implemented diagnostics for total energy, total momentum, angular momentum, and relative drift from a your chosen baseline
+- Diagnostics for total energy, total momentum, angular momentum, and relative drift from a resettable baseline
 
 ## Core Physics Concepts
 
-The sim uses Newtonian gravity. Each body feels the sum of gravitational acceleration from every other body modelled by:
+GravitySim uses Newtonian gravity. Each body feels the sum of gravitational acceleration from every other body:
 
-`a_i = Σ G m_j (r_j - r_i) / |r_j - r_i|^3`
+$$
+\mathbf{a}_i = \sum_{j \ne i} G\,m_j \frac{\mathbf{r}_j - \mathbf{r}_i}{\lVert \mathbf{r}_j - \mathbf{r}_i \rVert^3}
+$$
 
-At the moment, the simulation uses velocity Verlet integration, which is a much better fit for orbital systems than a simple Euler step. It's still lightweight enough for real time use, but it behaves better over longer runs. 
+The simulation currently uses velocity Verlet integration, which is a much better fit for orbital systems than a simple Euler step. It's still light enough for real time use, but it behaves much better over longer runs.
 
-Collisions are handled as perfectly inelastic merges. Mass and linear momentum are conserved, merged radius is recomputed from mass and density, and off centre impacts keep angular momentum bookkeeping through a stored spin term.
+Collisions are handled as perfectly inelastic merges. Mass and linear momentum are conserved, merged radius is recomputed from mass and density, and off-centre impacts keep angular momentum bookkeeping through a stored spin term.
 
 There is also a drift system in the HUD. Implemented during debugging but kept it since I felt if I was asking myself: “does this look right?”, other people might too. It measures how far the current state has numerically moved away from a chosen baseline, which makes it easier to judge integrator quality and general simulation health.
 
@@ -73,7 +92,7 @@ make
 make run
 ```
 
-My main develpment environment is Arch Linux, but the code is meant to stay portable anywhere SDL2 and SDL2_ttf are available.
+My main development environment is Arch Linux, but the code is intended to stay portable anywhere SDL2 and SDL2_ttf are available.
 
 ## Controls
 
