@@ -10,7 +10,7 @@
 <p align="center">
   <img alt="Status active development" src="https://img.shields.io/badge/Status-Active%20Development-1f6feb?style=for-the-badge" />
   <img alt="Target cross platform" src="https://img.shields.io/badge/Target-Cross--Platform-6f42c1?style=for-the-badge" />
-  <img alt="Roadmap progress" src="assets/badges/roadmap-progress.svg" height="28" />
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/Roadmap-17%2F26%20complete-b08900?style=for-the-badge" height="28" />
 </p>
 
 GravitySim is a real-time 2D gravity simulation written in C with SDL2. It started as a fun curiosity project, but the direction changed pretty quickly. The goal now is to keep the interaction side enjoyable while pushing the simulation itself toward more defensible physics and better numerical behaviour.
