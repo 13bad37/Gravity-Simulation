@@ -9,12 +9,12 @@
 
 <p align="center">
   <img alt="Status active development" src="https://img.shields.io/badge/Status-Active%20Development-1f6feb?style=for-the-badge" />
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/Roadmap-17%2F26%20complete-b08900?style=for-the-badge" height="28" />
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/Roadmap-18%2F26%20complete-b08900?style=for-the-badge" height="28" />
 </p>
 
 This is a real time 2D gravity simulation written in C with SDL2. It started as a fun curiosity project, but the direction changed pretty quickly. The goal now is to keep the interaction side enjoyable while pushing the simulation itself toward more defensible physics and better numerical behaviour.
 
-The current build already supports physically meaningful units, velocity Verlet integration, preset scenes, interactive spawning, collision merging, camera controls, and live diagnostics for energy, momentum, angular momentum, and drift. It is still actively being built out, but the foundation is in place and the roadmap is clear.
+The current build already supports physically meaningful units, multiple integrators, preset scenes, interactive spawning, collision merging, camera controls, and live diagnostics for energy, momentum, angular momentum, and drift. It is still actively being built out, but the foundation is in place and the roadmap is clear.
 
 ## Preview
 
@@ -44,7 +44,7 @@ The current build already supports physically meaningful units, velocity Verlet 
 - Real time N body gravity simulation in C
 - SDL2 rendering with trails, HUD, and camera controls
 - Physically meaningful simulation units
-- Velocity Verlet integration for better orbital stability
+- Runtime integrator comparison with Euler, velocity Verlet, and RK4
 - Interactive body spawning with drag based launch velocity
 - Preset scenes for empty space, a starter system, three body motion, and binary stars
 - Perfectly inelastic collision merging with mass, momentum, and density aware radius updates
@@ -58,7 +58,7 @@ $$
 \mathbf{a}_i = \sum_{j \ne i} G\,m_j \frac{\mathbf{r}_j - \mathbf{r}_i}{\lVert \mathbf{r}_j - \mathbf{r}_i \rVert^3}
 $$
 
-The simulation currently uses velocity Verlet integration, which is a much better fit for orbital systems than a simple Euler step. It's still light enough for real time use, but it behaves much better over longer runs.
+The simulation currently supports semi implicit Euler, velocity Verlet, and RK4. Velocity Verlet is still the default because it is a much better fit for orbital systems than a simple Euler step, while still staying light enough for real time use.
 
 Collisions are handled as perfectly inelastic merges. Mass and linear momentum are conserved, merged radius is recomputed from mass and density, and off-centre impacts keep angular momentum bookkeeping through a stored spin term.
 
@@ -103,6 +103,7 @@ My main development environment is Arch Linux, but the code is intended to stay 
 - `C`: reset camera
 - `- / =`: slow down or speed up simulated time
 - `T`: reset time scale
+- `I`: cycle the active integrator
 - `0 / 1 / 2 / 3`: switch scenes
 - `R`: reset the current scene
 - `B`: reset the diagnostics baseline
@@ -125,6 +126,7 @@ The badge above is generated automatically from this checklist by a GitHub Actio
 - [x] Codebase split into modules
 - [x] Move from sandbox-style units to physically meaningful units
 - [x] Velocity Verlet integration
+- [x] Integrator comparison mode
 - [x] Time scaling controls
 - [x] In-window HUD
 - [x] Camera zoom and pan
@@ -137,7 +139,6 @@ The badge above is generated automatically from this checklist by a GitHub Actio
 ### Planned
 
 - [ ] Save and load simulation states
-- [ ] Integrator comparison mode
 - [ ] Better density and body-type models
 - [ ] More physically defined preset scenes
 - [ ] Barnes-Hut approximation for larger body counts

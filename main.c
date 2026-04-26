@@ -19,6 +19,10 @@ static const double CAMERA_MIN_METERS_PER_PIXEL = 1.0e5;
 static const double CAMERA_MAX_METERS_PER_PIXEL = 5.0e10;
 static const double CAMERA_KEY_PAN_PIXELS = 80.0;
 
+static IntegratorMode next_integrator(IntegratorMode integrator) {
+    return (IntegratorMode)((integrator + 1) % INTEGRATOR_COUNT);
+}
+
 static double clamp_double(double value, double min_value, double max_value) {
     if (value < min_value) {
         return min_value;
@@ -177,6 +181,7 @@ int main(void) {
     SpawnState spawn = {0};
     Camera camera = {0};
     ScenePreset current_scene = initial_scene_from_env(SCENE_STARTER);
+    IntegratorMode current_integrator = INTEGRATOR_VELOCITY_VERLET;
     double accumulator = 0.0;
     double simulated_time_seconds = 0.0;
     DiagnosticsBaseline diagnostics_baseline = {0};
@@ -249,6 +254,12 @@ int main(void) {
 
                     case SDLK_t:
                         time_scale_index = DEFAULT_TIME_SCALE_INDEX;
+                        break;
+
+                    case SDLK_i:
+                        current_integrator = next_integrator(current_integrator);
+                        accumulator = 0.0;
+                        diagnostics_baseline = make_diagnostics_baseline(&sim);
                         break;
 
                     case SDLK_b:
@@ -432,14 +443,14 @@ int main(void) {
             accumulator += frame_time * SIM_SECONDS_PER_REAL_SECOND * TIME_SCALE_OPTIONS[time_scale_index];
 
             while (accumulator >= FIXED_DT) {
-                step_simulation(&sim, FIXED_DT);
+                step_simulation(&sim, FIXED_DT, current_integrator);
                 simulated_time_seconds += FIXED_DT;
                 accumulator -= FIXED_DT;
             }
         }
         SimulationDiagnostics diagnostics = compute_diagnostics(&sim);
         SimulationDrift drift = compute_diagnostics_drift(&diagnostics, &diagnostics_baseline);
-        update_window_title(window, &sim, &spawn, &camera, current_scene, paused,
+        update_window_title(window, &sim, &spawn, &camera, current_scene, current_integrator, paused,
                             TIME_SCALE_OPTIONS[time_scale_index]);
         render_simulation(
             renderer,
@@ -450,6 +461,7 @@ int main(void) {
             simulated_time_seconds,
             &camera,
             current_scene,
+            current_integrator,
             paused,
             hud_visible,
             TIME_SCALE_OPTIONS[time_scale_index],

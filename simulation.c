@@ -346,7 +346,9 @@ SimulationDrift compute_diagnostics_drift(const SimulationDiagnostics *current, 
 }
 
 
-static void compute_accelerations(const Simulation *sim, Vec2 accelerations[MAX_BODIES]) {
+static void compute_accelerations_for_positions(const Simulation *sim,
+                                                const Vec2 positions[MAX_BODIES],
+                                                Vec2 accelerations[MAX_BODIES]) {
     for (int i = 0; i < MAX_BODIES; i++) {
         accelerations[i] = vec2(0.0, 0.0);
     }
@@ -354,7 +356,7 @@ static void compute_accelerations(const Simulation *sim, Vec2 accelerations[MAX_
     // Compute each pair once and apply equal-and-opposite accelerations.
     for (int i = 0; i < sim->body_count; i++) {
         for (int j = i + 1; j < sim->body_count; j++) {
-            Vec2 delta = vec_sub(sim->bodies[j].position, sim->bodies[i].position);
+            Vec2 delta = vec_sub(positions[j], positions[i]);
 
             // Softening keeps the force from going really high at tiny distances.
             double distance_sq = vec_length_sq(delta) + (SOFTENING * SOFTENING);
@@ -377,7 +379,62 @@ static void compute_accelerations(const Simulation *sim, Vec2 accelerations[MAX_
     }
 }
 
-void step_simulation(Simulation *sim, double dt) {
+static void compute_accelerations(const Simulation *sim, Vec2 accelerations[MAX_BODIES]) {
+    Vec2 positions[MAX_BODIES];
+
+    for (int i = 0; i < sim->body_count; i++) {
+        positions[i] = sim->bodies[i].position;
+    }
+
+    compute_accelerations_for_positions(sim, positions, accelerations);
+}
+
+const char *integrator_name(IntegratorMode integrator) {
+    switch (integrator) {
+        case INTEGRATOR_SEMI_IMPLICIT_EULER:
+            return "semi-implicit euler";
+
+        case INTEGRATOR_VELOCITY_VERLET:
+            return "velocity verlet";
+
+        case INTEGRATOR_RK4:
+            return "rk4";
+
+        default:
+            return "unknown";
+    }
+}
+
+static void finish_simulation_step(Simulation *sim) {
+    // Merge overlapping bodies after the step. This models a perfectly
+    // inelastic collision: mass and linear momentum are conserved, while
+    // mechanical energy can be lost.
+    resolve_collisions(sim);
+
+    for (int i = 0; i < sim->body_count; i++) {
+        push_trail_point(&sim->bodies[i]);
+    }
+}
+
+static void step_semi_implicit_euler(Simulation *sim, double dt) {
+    Vec2 accelerations[MAX_BODIES];
+
+    compute_accelerations(sim, accelerations);
+
+    for (int i = 0; i < sim->body_count; i++) {
+        Body *body = &sim->bodies[i];
+
+        // Semi-implicit Euler:
+        // first update velocity from the current acceleration,
+        // then move using that new velocity.
+        body->velocity = vec_add(body->velocity, vec_scale(accelerations[i], dt));
+        body->position = vec_add(body->position, vec_scale(body->velocity, dt));
+    }
+
+    finish_simulation_step(sim);
+}
+
+static void step_velocity_verlet(Simulation *sim, double dt) {
     Vec2 accelerations_before[MAX_BODIES];
     Vec2 accelerations_after[MAX_BODIES];
 
@@ -411,10 +468,91 @@ void step_simulation(Simulation *sim, double dt) {
         body->velocity = vec_add(body->velocity, vec_scale(average_acceleration, dt));
     }
 
-    // Merge overlapping bodies after the step which perfectly models inelastic collision where mass and linear momentum are conserved while mechanical energy can be lost
-    resolve_collisions(sim);
+    finish_simulation_step(sim);
+}
+
+static void step_rk4(Simulation *sim, double dt) {
+    Vec2 positions_0[MAX_BODIES];
+    Vec2 velocities_0[MAX_BODIES];
+    Vec2 stage_positions[MAX_BODIES];
+    Vec2 stage_velocities[MAX_BODIES];
+    Vec2 k1_x[MAX_BODIES];
+    Vec2 k1_v[MAX_BODIES];
+    Vec2 k2_x[MAX_BODIES];
+    Vec2 k2_v[MAX_BODIES];
+    Vec2 k3_x[MAX_BODIES];
+    Vec2 k3_v[MAX_BODIES];
+    Vec2 k4_x[MAX_BODIES];
+    Vec2 k4_v[MAX_BODIES];
 
     for (int i = 0; i < sim->body_count; i++) {
-        push_trail_point(&sim->bodies[i]);
+        positions_0[i] = sim->bodies[i].position;
+        velocities_0[i] = sim->bodies[i].velocity;
+    }
+
+    compute_accelerations_for_positions(sim, positions_0, k1_v);
+    for (int i = 0; i < sim->body_count; i++) {
+        k1_x[i] = velocities_0[i];
+        stage_positions[i] = vec_add(positions_0[i], vec_scale(k1_x[i], 0.5 * dt));
+        stage_velocities[i] = vec_add(velocities_0[i], vec_scale(k1_v[i], 0.5 * dt));
+    }
+
+    compute_accelerations_for_positions(sim, stage_positions, k2_v);
+    for (int i = 0; i < sim->body_count; i++) {
+        k2_x[i] = stage_velocities[i];
+        stage_positions[i] = vec_add(positions_0[i], vec_scale(k2_x[i], 0.5 * dt));
+        stage_velocities[i] = vec_add(velocities_0[i], vec_scale(k2_v[i], 0.5 * dt));
+    }
+
+    compute_accelerations_for_positions(sim, stage_positions, k3_v);
+    for (int i = 0; i < sim->body_count; i++) {
+        k3_x[i] = stage_velocities[i];
+        stage_positions[i] = vec_add(positions_0[i], vec_scale(k3_x[i], dt));
+        stage_velocities[i] = vec_add(velocities_0[i], vec_scale(k3_v[i], dt));
+    }
+
+    compute_accelerations_for_positions(sim, stage_positions, k4_v);
+    for (int i = 0; i < sim->body_count; i++) {
+        Body *body = &sim->bodies[i];
+        Vec2 position_sum;
+        Vec2 velocity_sum;
+
+        k4_x[i] = stage_velocities[i];
+
+        // RK4 combines four slope estimates:
+        // y_next = y + dt / 6 * (k1 + 2k2 + 2k3 + k4)
+        position_sum = vec_add(
+            vec_add(k1_x[i], vec_scale(k2_x[i], 2.0)),
+            vec_add(vec_scale(k3_x[i], 2.0), k4_x[i])
+        );
+        velocity_sum = vec_add(
+            vec_add(k1_v[i], vec_scale(k2_v[i], 2.0)),
+            vec_add(vec_scale(k3_v[i], 2.0), k4_v[i])
+        );
+
+        body->position = vec_add(positions_0[i], vec_scale(position_sum, dt / 6.0));
+        body->velocity = vec_add(velocities_0[i], vec_scale(velocity_sum, dt / 6.0));
+    }
+
+    finish_simulation_step(sim);
+}
+
+void step_simulation(Simulation *sim, double dt, IntegratorMode integrator) {
+    switch (integrator) {
+        case INTEGRATOR_SEMI_IMPLICIT_EULER:
+            step_semi_implicit_euler(sim, dt);
+            break;
+
+        case INTEGRATOR_VELOCITY_VERLET:
+            step_velocity_verlet(sim, dt);
+            break;
+
+        case INTEGRATOR_RK4:
+            step_rk4(sim, dt);
+            break;
+
+        default:
+            step_velocity_verlet(sim, dt);
+            break;
     }
 }

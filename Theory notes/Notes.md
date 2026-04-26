@@ -75,6 +75,46 @@ $$
 
 This is also important because orbital systems are pretty sensitive to numerical drift. Velocity Verlet is still simple enough to follow, but it works much better over longer runs.
 
+## Integrator comparison mode
+
+Once I already had diagnostics and drift tracking in place, it stopped making much sense to just keep one integrator hardcoded and assume that was enough. I wanted to actually compare them properly in the same scenes and under the same conditions.
+
+The simulation now lets me switch between:
+
+- semi implicit Euler
+- velocity Verlet
+- RK4
+
+Semi implicit Euler is the simplest of the three:
+
+$$
+\mathbf{v}_{n+1} = \mathbf{v}_n + \mathbf{a}_n \, dt
+$$
+
+$$
+\mathbf{x}_{n+1} = \mathbf{x}_n + \mathbf{v}_{n+1} \, dt
+$$
+
+It's cheap and easy to follow, but it usually drifts more and tends to be the weakest option for long orbital runs.
+
+Velocity Verlet is still the default because it's a really good middle ground. It's simple enough to understand, behaves much better for orbital systems, and generally keeps the long term motion healthier than Euler without getting too heavy.
+
+RK4 is different. It takes four slope samples across the timestep and combines them:
+
+$$
+\mathbf{y}_{n+1} = \mathbf{y}_n + \frac{dt}{6}\left(\mathbf{k}_1 + 2\mathbf{k}_2 + 2\mathbf{k}_3 + \mathbf{k}_4\right)
+$$
+
+where the full state is:
+
+$$
+\mathbf{y} = (\mathbf{x}, \mathbf{v})
+$$
+
+RK4 is usually very accurate per step, especially over short to medium runs, but it isn't automatically the "best" choice just because it is higher order. For orbital problems, long term structure matters too, not just local accuracy.
+
+That is basically why the comparison mode exists. It is there so I can run the same setup, switch integrators with `I`, and actually look at the drift values instead of arguing from gut feeling.
+
 ## Softening
 
 The simulation uses gravitational softening so forces don't blow up when two bodies get really close.

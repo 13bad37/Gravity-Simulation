@@ -23,6 +23,7 @@ Body make_body(double x, double y, double vx, double vy, double mass, double rad
 SimulationDiagnostics compute_diagnostics(const Simulation *sim);
 DiagnosticsBaseline make_diagnostics_baseline(const Simulation *sim);
 SimulationDrift compute_diagnostics_drift(const SimulationDiagnostics *current, const DiagnosticsBaseline *baseline);
-void step_simulation(Simulation *sim, double dt);
+const char *integrator_name(IntegratorMode integrator);
+void step_simulation(Simulation *sim, double dt, IntegratorMode integrator);
 
 #endif

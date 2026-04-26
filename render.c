@@ -239,7 +239,8 @@ static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn, 
 static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnState *spawn,
                      const SimulationDiagnostics *diagnostics, const SimulationDrift *drift,
                      double simulated_time_seconds, const Camera *camera, ScenePreset scene,
-                     bool paused, double time_scale, int time_scale_index, int time_scale_count) {
+                     IntegratorMode integrator, bool paused, double time_scale,
+                     int time_scale_index, int time_scale_count) {
     const SDL_Color title_color = {255, 214, 140, 255};
     const SDL_Color text_color = {228, 233, 245, 255};
     SimulationDiagnostics zero_diagnostics = {0};
@@ -269,7 +270,7 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     momentum_magnitude = vec_magnitude(diagnostics->total_momentum);
     title_height = TTF_FontHeight(g_hud_title_font);
     body_step = TTF_FontLineSkip(g_hud_body_font) + 1;
-    panel_height = 28 + title_height + 18 + (21 * body_step) + 18;
+    panel_height = 28 + title_height + 18 + (23 * body_step) + 18;
 
     draw_panel(renderer, panel_x, panel_y, panel_width, panel_height);
     draw_text_line(renderer, g_hud_title_font, text_x, panel_y + 14, title_color, "Gravity Sim");
@@ -291,6 +292,10 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     snprintf(line, sizeof(line), "Time scale: %.3gx", time_scale);
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
     draw_time_scale_bar(renderer, panel_x + 302, line_y + 5, 150, 10, time_scale_index, time_scale_count);
+    line_y += body_step;
+
+    snprintf(line, sizeof(line), "Integrator: %s", integrator_name(integrator));
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
     line_y += body_step;
 
     snprintf(line, sizeof(line), "View scale: %.3g km/px", view_km_per_pixel);
@@ -350,17 +355,17 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "[ ] mass, Shift wheel mass");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "- / = time, T reset, C camera");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "- / = time, T reset, I integrator");
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "0-3 scenes, R reset, B baseline");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Space pause, H hide HUD");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "C camera, Space pause, H hide HUD");
 }
 
 void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const SpawnState *spawn,
                        const SimulationDiagnostics *diagnostics, const SimulationDrift *drift,
                        double simulated_time_seconds, const Camera *camera, ScenePreset scene,
-                       bool paused, bool hud_visible, double time_scale,
+                       IntegratorMode integrator, bool paused, bool hud_visible, double time_scale,
                        int time_scale_index, int time_scale_count) {
     SDL_SetRenderDrawColor(renderer, 8, 12, 20, 255);
     SDL_RenderClear(renderer);
@@ -394,6 +399,7 @@ void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const Spaw
             simulated_time_seconds,
             camera,
             scene,
+            integrator,
             paused,
             time_scale,
             time_scale_index,
@@ -405,15 +411,17 @@ void render_simulation(SDL_Renderer *renderer, const Simulation *sim, const Spaw
 }
 
 void update_window_title(SDL_Window *window, const Simulation *sim, const SpawnState *spawn,
-                         const Camera *camera, ScenePreset scene, bool paused, double time_scale) {
+                         const Camera *camera, ScenePreset scene, IntegratorMode integrator,
+                         bool paused, double time_scale) {
     char title[256];
 
     snprintf(
         title,
         sizeof(title),
-        "Gravity Sim | %s | scene %s | bodies %d/%d | spawn %.2f Earth masses | time %.3gx | %.3g km/px",
+        "Gravity Sim | %s | scene %s | %s | bodies %d/%d | spawn %.2f Earth masses | time %.3gx | %.3g km/px",
         paused ? "paused" : "running",
         scene_name(scene),
+        integrator_name(integrator),
         sim->body_count,
         MAX_BODIES,
         spawn->mass / EARTH_MASS,

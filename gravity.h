@@ -83,6 +83,13 @@ typedef enum {
     SCENE_BINARY_STARS = 3
 } ScenePreset;
 
+typedef enum {
+    INTEGRATOR_SEMI_IMPLICIT_EULER = 0,
+    INTEGRATOR_VELOCITY_VERLET = 1,
+    INTEGRATOR_RK4 = 2,
+    INTEGRATOR_COUNT = 3
+} IntegratorMode;
+
 typedef struct {
     bool active;
     Vec2 start;
