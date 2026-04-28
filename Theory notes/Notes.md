@@ -139,6 +139,42 @@ The scale converts the on screen drag into a launch velocity.
 
 Spawned body radius comes from mass with a density assumption. If density is treated as roughly constant, mass grows with volume and volume grows with `r^3`, so radius follows a cube root relationship.
 
+## Better density and body type model
+
+Up to this point, spawned bodies were still leaning on one default density too much. That was okay for getting the system running, but it was also one of those things where the sim could look more physical than it really was.
+
+The better version is to make body type an actual part of the model. So now there is a difference between:
+
+- rocky bodies
+- gas giants
+- stars
+
+That matters because radius shouldn't come from mass alone. It should come from mass and density together:
+
+$$
+r = \sqrt[3]{\frac{3m}{4\pi\rho}}
+$$
+
+So once the body type is known, the sim can use a more sensible density for that class of object, and the radius stops being a one size fits all estimate.
+
+That also changes spawning a bit. Picking a spawn body is no longer just "how massive is this thing?" It's also "what kind of object is this meant to be?" A rocky body and a star can have very different masses and still be completely reasonable in their own category, so the spawn controls now treat the valid mass range and step size as type dependent.
+
+The presets benefit from this too. A star is now explicitly a star, a rocky planet is explicitly rocky, and a gas giant can actually use gas giant style density instead of just borrowing the same assumption as everything else.
+
+There's still one important detail with collisions. When two bodies merge, the sim keeps calculating the merged density from the combined volumes, because that part should stay physical:
+
+$$
+V = \frac{m}{\rho}
+$$
+
+and then:
+
+$$
+\rho_{\text{merged}} = \frac{m_1 + m_2}{V_1 + V_2}
+$$
+
+So the body type is useful as a classification and for spawning defaults, but the actual merged density still comes from the collision math instead of being snapped back to some canned value. That part matters, because otherwise the type system would start overriding the physics instead of supporting it.
+
 ## Preset scenes
 
 A preset scene is just a set of initial conditions for the same gravity law. The physics engine does not change. What changes is where bodies start, how massive they are, and what initial velocities they get.

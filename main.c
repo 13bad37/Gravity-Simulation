@@ -196,8 +196,8 @@ int main(void) {
     reset_camera(&camera);
     diagnostics_baseline = make_diagnostics_baseline(&sim);
 
-    spawn.mass = EARTH_MASS;
-    spawn.color_index = 0;
+    spawn.active = false;
+    set_spawn_body_type(&spawn, BODY_TYPE_ROCKY);
 
     bool running = true;
     bool paused = false;
@@ -256,6 +256,10 @@ int main(void) {
                         time_scale_index = DEFAULT_TIME_SCALE_INDEX;
                         break;
 
+                    case SDLK_TAB:
+                        set_spawn_body_type(&spawn, next_body_type(spawn.type));
+                        break;
+
                     case SDLK_i:
                         current_integrator = next_integrator(current_integrator);
                         accumulator = 0.0;
@@ -299,11 +303,11 @@ int main(void) {
                         break;
 
                     case SDLK_LEFTBRACKET:
-                        adjust_spawn_mass(&spawn, -SPAWN_MASS_STEP);
+                        adjust_spawn_mass(&spawn, -1.0);
                         break;
 
                     case SDLK_RIGHTBRACKET:
-                        adjust_spawn_mass(&spawn, SPAWN_MASS_STEP);
+                        adjust_spawn_mass(&spawn, 1.0);
                         break;
 
                     case SDLK_MINUS:
@@ -335,7 +339,7 @@ int main(void) {
                     SDL_Keymod modifiers = SDL_GetModState();
 
                     if ((modifiers & KMOD_SHIFT) != 0) {
-                        adjust_spawn_mass(&spawn, wheel_y * SPAWN_MASS_STEP);
+                        adjust_spawn_mass(&spawn, (double)wheel_y);
                     } else {
                         int mouse_x;
                         int mouse_y;
@@ -400,17 +404,14 @@ int main(void) {
                     spawn.start.y,
                     launch_velocity.x,
                     launch_velocity.y,
+                    spawn.type,
                     spawn.mass,
-                    radius_from_mass(spawn.mass),
-                    EARTH_DENSITY,
+                    radius_from_mass_type(spawn.mass, spawn.type),
                     current_spawn_color(&spawn)
                 );
 
                 if (!add_body(&sim, new_body)) {
                     fprintf(stderr, "Body limit reached (%d max)\n", MAX_BODIES);
-                } else {
-                    int color_count = spawn_color_count();
-                    spawn.color_index = (spawn.color_index + 1) % color_count;
                 }
 
                 spawn.active = false;

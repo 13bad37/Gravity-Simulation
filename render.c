@@ -229,7 +229,7 @@ static void draw_spawn_preview(SDL_Renderer *renderer, const SpawnState *spawn, 
         renderer,
         start.x,
         start.y,
-        draw_radius_pixels(radius_from_mass(spawn->mass), camera),
+        draw_radius_pixels(radius_from_mass_type(spawn->mass, spawn->type), camera),
         ghost_color
     );
 
@@ -306,7 +306,14 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
     line_y += body_step;
 
-    snprintf(line, sizeof(line), "Spawn mass: %.2f Earth", spawn->mass / EARTH_MASS);
+    snprintf(
+        line,
+        sizeof(line),
+        "Spawn: %s %.2f %s",
+        body_type_name(spawn->type),
+        spawn->mass / body_type_mass_display_scale(spawn->type),
+        body_type_mass_display_unit(spawn->type)
+    );
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, line);
     line_y += body_step + 2;
 
@@ -353,7 +360,7 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Middle drag or WASD pan");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "[ ] mass, Shift wheel mass");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "Tab type, [ ] mass, Shift wheel mass");
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "- / = time, T reset, I integrator");
     line_y += body_step;
@@ -418,13 +425,15 @@ void update_window_title(SDL_Window *window, const Simulation *sim, const SpawnS
     snprintf(
         title,
         sizeof(title),
-        "Gravity Sim | %s | scene %s | %s | bodies %d/%d | spawn %.2f Earth masses | time %.3gx | %.3g km/px",
+        "Gravity Sim | %s | scene %s | %s | bodies %d/%d | spawn %s %.2f %s | time %.3gx | %.3g km/px",
         paused ? "paused" : "running",
         scene_name(scene),
         integrator_name(integrator),
         sim->body_count,
         MAX_BODIES,
-        spawn->mass / EARTH_MASS,
+        body_type_name(spawn->type),
+        spawn->mass / body_type_mass_display_scale(spawn->type),
+        body_type_mass_display_unit(spawn->type),
         time_scale,
         camera->meters_per_pixel / 1000.0
     );

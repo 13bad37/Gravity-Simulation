@@ -60,9 +60,9 @@ static void load_starter_scene(Simulation *sim) {
         0.0,
         0.0,
         0.0,
+        BODY_TYPE_STAR,
         star_mass,
         SOLAR_RADIUS,
-        density_from_mass_radius(star_mass, SOLAR_RADIUS),
         star_color
     );
 
@@ -74,9 +74,9 @@ static void load_starter_scene(Simulation *sim) {
         0.0,
         0.0,
         orbit_a_speed,
+        BODY_TYPE_ROCKY,
         EARTH_MASS,
         EARTH_RADIUS,
-        density_from_mass_radius(EARTH_MASS, EARTH_RADIUS),
         blue_color
     );
 
@@ -88,9 +88,9 @@ static void load_starter_scene(Simulation *sim) {
         0.0,
         0.0,
         -orbit_b_speed,
+        BODY_TYPE_ROCKY,
         6.4171e23,
         3.3895e6,
-        density_from_mass_radius(6.4171e23, 3.3895e6),
         red_color
     );
     sim->body_count = 3;
@@ -117,9 +117,9 @@ static void load_chaotic_three_body_scene(Simulation *sim) {
         -0.15 * AU,
         12000.0,
         -14000.0,
+        BODY_TYPE_STAR,
         mass,
         radius,
-        density_from_mass_radius(mass, radius),
         color_a
     );
     sim->bodies[1] = make_body(
@@ -127,9 +127,9 @@ static void load_chaotic_three_body_scene(Simulation *sim) {
         -0.15 * AU,
         -11000.0,
         16000.0,
+        BODY_TYPE_STAR,
         mass,
         radius,
-        density_from_mass_radius(mass, radius),
         color_b
     );
     sim->bodies[2] = make_body(
@@ -137,9 +137,9 @@ static void load_chaotic_three_body_scene(Simulation *sim) {
         0.62 * AU,
         -5000.0,
         -3000.0,
+        BODY_TYPE_STAR,
         mass,
         radius,
-        density_from_mass_radius(mass, radius),
         color_c
     );
 
@@ -170,9 +170,9 @@ static void load_binary_stars_scene(Simulation *sim) {
         0.0,
         0.0,
         -star_speed,
+        BODY_TYPE_STAR,
         star_mass,
         star_radius,
-        density_from_mass_radius(star_mass, star_radius),
         star_a_color
     );
     sim->bodies[1] = make_body(
@@ -180,9 +180,9 @@ static void load_binary_stars_scene(Simulation *sim) {
         0.0,
         0.0,
         star_speed,
+        BODY_TYPE_STAR,
         star_mass,
         star_radius,
-        density_from_mass_radius(star_mass, star_radius),
         star_b_color
     );
     sim->bodies[2] = make_body(
@@ -190,9 +190,9 @@ static void load_binary_stars_scene(Simulation *sim) {
         planet_radius_from_center,
         planet_speed,
         0.0,
-        0.5 * EARTH_MASS,
-        radius_from_mass(0.5 * EARTH_MASS),
-        EARTH_DENSITY,
+        BODY_TYPE_GAS_GIANT,
+        0.8 * JUPITER_MASS,
+        0.9 * JUPITER_RADIUS,
         planet_color
     );
     finalise_scene(sim);
@@ -240,5 +240,4 @@ void activate_scene(ScenePreset preset, Simulation *initial_state, Simulation *s
     *accumulator = 0.0;
     *simulated_time_seconds = 0.0;
     spawn->active = false;
-    spawn->color_index = 0;
 }

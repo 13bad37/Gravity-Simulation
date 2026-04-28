@@ -15,20 +15,12 @@ const double SPAWN_SPEED_PER_PIXEL = 300.0;
 const double EARTH_MASS = 5.9722e24;
 const double EARTH_RADIUS = 6.371e6;
 const double EARTH_DENSITY = 5514.0;
+const double JUPITER_MASS = 1.89813e27;
+const double JUPITER_RADIUS = 6.9911e7;
+const double JUPITER_DENSITY = 1326.0;
 const double SOLAR_MASS = 1.98847e30;
 const double SOLAR_RADIUS = 6.9634e8;
 const double AU = 1.495978707e11;
-const double SPAWN_MASS_MIN = 2.9861e23;
-const double SPAWN_MASS_MAX = 1.19444e26;
-const double SPAWN_MASS_STEP = 1.49305e24;
-
-static const SDL_Color SPAWN_PALETTE[] = {
-    {120, 200, 255, 255},
-    {255, 120, 150, 255},
-    {160, 255, 190, 255},
-    {255, 210, 120, 255},
-    {180, 160, 255, 255}
-};
 
 Vec2 vec2(double x, double y) {
     Vec2 value = {x, y};
@@ -67,6 +59,153 @@ static double clamp_double(double value, double min_value, double max_value) {
     return value;
 }
 
+const char *body_type_name(BodyType type) {
+    switch (type) {
+        case BODY_TYPE_ROCKY:
+            return "rocky";
+
+        case BODY_TYPE_GAS_GIANT:
+            return "gas giant";
+
+        case BODY_TYPE_STAR:
+            return "star";
+
+        default:
+            return "unknown";
+    }
+}
+
+double body_type_density(BodyType type) {
+    switch (type) {
+        case BODY_TYPE_ROCKY:
+            return EARTH_DENSITY;
+
+        case BODY_TYPE_GAS_GIANT:
+            return JUPITER_DENSITY;
+
+        case BODY_TYPE_STAR:
+            return density_from_mass_radius(SOLAR_MASS, SOLAR_RADIUS);
+
+        default:
+            return EARTH_DENSITY;
+    }
+}
+
+double body_type_default_mass(BodyType type) {
+    switch (type) {
+        case BODY_TYPE_ROCKY:
+            return EARTH_MASS;
+
+        case BODY_TYPE_GAS_GIANT:
+            return JUPITER_MASS;
+
+        case BODY_TYPE_STAR:
+            return SOLAR_MASS;
+
+        default:
+            return EARTH_MASS;
+    }
+}
+
+double body_type_min_mass(BodyType type) {
+    switch (type) {
+        case BODY_TYPE_ROCKY:
+            return 0.05 * EARTH_MASS;
+        case BODY_TYPE_GAS_GIANT:
+            return 0.10 * JUPITER_MASS;
+
+        case BODY_TYPE_STAR:
+            // Rough lower bound for a hydrogen-burning star.
+            return 0.08 * SOLAR_MASS;
+
+        default:
+            return 0.05 * EARTH_MASS;
+    }
+}
+
+double body_type_max_mass(BodyType type) {
+    switch (type) {
+        case BODY_TYPE_ROCKY:
+            return 15.0 * EARTH_MASS;
+
+        case BODY_TYPE_GAS_GIANT:
+            return 10.0 * JUPITER_MASS;
+
+        case BODY_TYPE_STAR:
+            return 5.0 * SOLAR_MASS;
+
+        default:
+            return 15.0 * EARTH_MASS;
+    }
+}
+
+double body_type_mass_step(BodyType type) {
+    switch (type) {
+        case BODY_TYPE_ROCKY:
+            return 0.25 * EARTH_MASS;
+        case BODY_TYPE_GAS_GIANT:
+            return 0.10 * JUPITER_MASS;
+
+        case BODY_TYPE_STAR:
+            return 0.05 * SOLAR_MASS;
+
+        default:
+            return 0.25 * EARTH_MASS;
+    }
+}
+
+double body_type_mass_display_scale(BodyType type) {
+    switch (type) {
+        case BODY_TYPE_ROCKY:
+            return EARTH_MASS;
+
+        case BODY_TYPE_GAS_GIANT:
+            return JUPITER_MASS;
+
+        case BODY_TYPE_STAR:
+            return SOLAR_MASS;
+
+        default:
+            return EARTH_MASS;
+    }
+}
+
+const char *body_type_mass_display_unit(BodyType type) {
+    switch (type) {
+        case BODY_TYPE_ROCKY:
+            return "Earth";
+
+        case BODY_TYPE_GAS_GIANT:
+            return "Jupiter";
+
+        case BODY_TYPE_STAR:
+            return "Solar";
+
+        default:
+            return "Earth";
+    }
+}
+
+BodyType next_body_type(BodyType type) {
+    return (BodyType)((type + 1) % BODY_TYPE_COUNT);
+}
+
+void set_spawn_body_type(SpawnState *spawn, BodyType type) {
+    double min_mass = body_type_min_mass(type);
+    double max_mass = body_type_max_mass(type);
+
+    spawn->type = type;
+
+    // If the current mass makes no sense for the new body class,
+    // jump to that class's default instead of dragging across scales.
+    if (spawn->mass < min_mass || spawn->mass > max_mass) {
+        spawn->mass = body_type_default_mass(type);
+    } else {
+        spawn->mass = clamp_double(spawn->mass, min_mass, max_mass);
+    }
+}
+
+
 double radius_from_mass_density(double mass, double density) {
     const double pi = 3.14159265358979323846;
 
@@ -90,21 +229,34 @@ double density_from_mass_radius(double mass, double radius) {
     return mass / volume;
 }
 
-double radius_from_mass(double mass) {
-    return radius_from_mass_density(mass, EARTH_DENSITY);
+double radius_from_mass_type(double mass, BodyType type) {
+    return radius_from_mass_density(mass, body_type_density(type));
 }
 
 SDL_Color current_spawn_color(const SpawnState *spawn) {
-    int color_count = (int)(sizeof(SPAWN_PALETTE) / sizeof(SPAWN_PALETTE[0]));
-    return SPAWN_PALETTE[spawn->color_index % color_count];
+    switch (spawn->type) {
+        case BODY_TYPE_ROCKY:
+            return (SDL_Color){120, 200, 255, 255};
+
+        case BODY_TYPE_GAS_GIANT:
+            return (SDL_Color){255, 190, 120, 255};
+
+        case BODY_TYPE_STAR:
+            return (SDL_Color){255, 214, 140, 255};
+
+        default:
+            return (SDL_Color){200, 200, 200, 255};
+    }
 }
 
-int spawn_color_count(void) {
-    return (int)(sizeof(SPAWN_PALETTE) / sizeof(SPAWN_PALETTE[0]));
-}
+void adjust_spawn_mass(SpawnState *spawn, double step_count) {
+    double delta = step_count * body_type_mass_step(spawn->type);
 
-void adjust_spawn_mass(SpawnState *spawn, double delta) {
-    spawn->mass = clamp_double(spawn->mass + delta, SPAWN_MASS_MIN, SPAWN_MASS_MAX);
+    spawn->mass = clamp_double(
+        spawn->mass + delta,
+        body_type_min_mass(spawn->type),
+        body_type_max_mass(spawn->type)
+    );
 }
 
 bool add_body(Simulation *sim, Body body) {
@@ -132,14 +284,15 @@ void reset_trail(Body *body) {
     push_trail_point(body);
 }
 
-Body make_body(double x, double y, double vx, double vy, double mass, double radius,
-               double density, SDL_Color color) {
+Body make_body(double x, double y, double vx, double vy, BodyType type,
+               double mass, double radius, SDL_Color color) {
     Body body = {0};
+    body.type = type;
     body.position = vec2(x, y);
     body.velocity = vec2(vx, vy);
     body.mass = mass;
     body.radius = radius;
-    body.density = density;
+    body.density = density_from_mass_radius(mass, radius);
     body.spin_angular_momentum = 0.0;
     body.color = color;
     reset_trail(&body);
@@ -173,6 +326,14 @@ static SDL_Color merge_colors(const Body *a, const Body *b, double merged_mass) 
     color.b = (Uint8)lround((a->color.b * weight_a) + (b->color.b * weight_b));
     color.a = 255;
     return color;
+}
+
+static BodyType dominant_body_type(const Body *a, const Body *b) {
+    if (a->mass >= b->mass) {
+        return a->type;
+    }
+
+    return b->type;
 }
 
 static void merge_body_pair(Simulation *sim, int index_a, int index_b) {
@@ -212,9 +373,10 @@ static void merge_body_pair(Simulation *sim, int index_a, int index_b) {
     if (volume_a + volume_b > 0.0) {
         merged_density = merged_mass / (volume_a + volume_b);
     } else {
-        merged_density = EARTH_DENSITY;
+        merged_density = body_type_density(dominant_body_type(a, b));
     }
 
+    merged.type = dominant_body_type(a, b);
     merged.mass = merged_mass;
     merged.position = merged_position;
     merged.velocity = vec_scale(merged_momentum, 1.0 / merged_mass);
