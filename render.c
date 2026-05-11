@@ -364,7 +364,7 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "- / = time, T reset, I integrator");
     line_y += body_step;
-    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "0-3 scenes, R reset, B baseline");
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "0-4 scenes, R reset, B baseline");
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "C camera, Space pause, H hide HUD");
 }

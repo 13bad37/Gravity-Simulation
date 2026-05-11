@@ -88,7 +88,8 @@ typedef enum {
     SCENE_EMPTY = 0,
     SCENE_STARTER = 1,
     SCENE_CHAOTIC_3_BODY = 2,
-    SCENE_BINARY_STARS = 3
+    SCENE_BINARY_STARS = 3,
+    SCENE_GAS_GIANT_MOON = 4
 } ScenePreset;
 
 typedef enum {

@@ -84,6 +84,10 @@ static ScenePreset initial_scene_from_env(ScenePreset fallback) {
         strcmp(value, "binary-stars") == 0 || strcmp(value, "binary_stars") == 0) {
         return SCENE_BINARY_STARS;
     }
+    if (strcmp(value, "4") == 0 || strcmp(value, "gas-giant-moon") == 0 || strcmp(value, "gas_giant_moon") == 0 || strcmp(value, "moon-system") == 0)
+    {
+        return SCENE_GAS_GIANT_MOON;
+    }
 
     return fallback;
 }
@@ -301,6 +305,12 @@ int main(void) {
                         reset_camera(&camera);
                         diagnostics_baseline = make_diagnostics_baseline(&sim);
                         break;
+                    case SDLK_4:
+                            current_scene = SCENE_GAS_GIANT_MOON;
+                            activate_scene(current_scene, &initial_state, &sim, &spawn, &accumulator, &simulated_time_seconds);
+                            reset_camera(&camera);
+                            diagnostics_baseline = make_diagnostics_baseline(&sim);
+                            break;
 
                     case SDLK_LEFTBRACKET:
                         adjust_spawn_mass(&spawn, -1.0);

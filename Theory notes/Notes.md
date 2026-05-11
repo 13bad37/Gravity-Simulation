@@ -209,6 +209,23 @@ $$
 v = \sqrt{\frac{GM}{2d}}
 $$
 
+### Gas giant + moon
+
+This scene is there to make the body type system actually do some visible work instead of just existing in the data model. It gives the sim a star, a gas giant, and a rocky moon all in one setup.
+
+The important physics part is the moon. It is not only orbiting the gas giant. It is also being carried around the star by the gas giant's own orbit. So in the star's frame, the moon's starting velocity is made from two pieces:
+
+- the gas giant's orbital velocity around the star
+- the moon's local orbital velocity around the gas giant
+
+That means the moon's total starting speed is basically:
+
+$$
+\mathbf{v}_{\text{moon}} = \mathbf{v}_{\text{giant around star}} + \mathbf{v}_{\text{moon around giant}}
+$$
+
+I wanted this scene because it gives the sim a more layered system instead of just "planet goes around star". It is a better test for nested orbits, the new density model, and the integrator comparison mode.
+
 ### Zero total momentum
 
 For the presets, it's useful to remove unwanted drift by making total momentum zero:

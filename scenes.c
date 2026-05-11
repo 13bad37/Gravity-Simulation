@@ -198,16 +198,57 @@ static void load_binary_stars_scene(Simulation *sim) {
     finalise_scene(sim);
 }
 
+static void load_gas_giant_moon_scene(Simulation *sim) {
+    const SDL_Color star_color = {255, 214, 140, 255};
+    const SDL_Color giant_color = {255, 190, 120, 255};
+    const SDL_Color moon_color = {120, 200, 255, 255};
+
+    const double star_mass = SOLAR_MASS;
+    const double giant_orbit_radius = 5.204 * AU;
+    const double giant_orbit_speed = circular_orbit_speed(star_mass, giant_orbit_radius);
+    const double moon_orbit_radius = 6.71e8;
+    const double moon_orbit_speed = circular_orbit_speed(JUPITER_MASS, moon_orbit_radius);
+    const double moon_mass = 0.0123 * EARTH_MASS;
+    const double moon_radius = 1.7374e6;
+
+    clear_simulation(sim);
+
+    sim ->body_count = 3;
+    sim->bodies[0] = make_body(
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        BODY_TYPE_STAR,
+        star_mass, 
+        SOLAR_RADIUS,
+        star_color
+    );
+    sim->bodies[2] = make_body(
+        giant_orbit_radius + moon_orbit_radius,
+        0.0,
+        0.0,
+        giant_orbit_speed + moon_orbit_speed,
+        BODY_TYPE_ROCKY,
+        moon_mass,
+        moon_radius,
+        moon_color
+    );
+    finalise_scene(sim);
+}
+
 const char *scene_name(ScenePreset preset) {
     switch (preset) {
         case SCENE_EMPTY:
             return "empty";
         case SCENE_STARTER:
-            return("starter");
+            return("solar baseline");
         case SCENE_CHAOTIC_3_BODY:
             return"chaotic 3-body";
         case SCENE_BINARY_STARS:
-            return "binary stars";
+            return "circumbinary";
+        case SCENE_GAS_GIANT_MOON:
+            return "gas giant + moon";
         default:
             return "unkown";
     }
@@ -226,6 +267,9 @@ static void load_scene(Simulation *sim, ScenePreset preset) {
             break;
         case SCENE_BINARY_STARS:
             load_binary_stars_scene(sim);
+            break;
+        case SCENE_GAS_GIANT_MOON:
+            load_gas_giant_moon_scene(sim);
             break;
         default:
             load_starter_scene(sim);
