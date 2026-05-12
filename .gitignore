@@ -4,3 +4,4 @@ Theory notes/.obsidian/
 # Local build outputs
 *.o
 gravity_sim
+gravitysim_save.txt

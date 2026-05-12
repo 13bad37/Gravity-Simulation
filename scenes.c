@@ -213,16 +213,26 @@ static void load_gas_giant_moon_scene(Simulation *sim) {
 
     clear_simulation(sim);
 
-    sim ->body_count = 3;
+    sim->body_count = 3;
     sim->bodies[0] = make_body(
         0.0,
         0.0,
         0.0,
         0.0,
         BODY_TYPE_STAR,
-        star_mass, 
+        star_mass,
         SOLAR_RADIUS,
         star_color
+    );
+    sim->bodies[1] = make_body(
+        giant_orbit_radius,
+        0.0,
+        0.0,
+        giant_orbit_speed,
+        BODY_TYPE_GAS_GIANT,
+        JUPITER_MASS,
+        JUPITER_RADIUS,
+        giant_color
     );
     sim->bodies[2] = make_body(
         giant_orbit_radius + moon_orbit_radius,

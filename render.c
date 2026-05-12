@@ -270,7 +270,7 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     momentum_magnitude = vec_magnitude(diagnostics->total_momentum);
     title_height = TTF_FontHeight(g_hud_title_font);
     body_step = TTF_FontLineSkip(g_hud_body_font) + 1;
-    panel_height = 28 + title_height + 18 + (23 * body_step) + 18;
+    panel_height = 28 + title_height + 18 + (24 * body_step) + 18;
 
     draw_panel(renderer, panel_x, panel_y, panel_width, panel_height);
     draw_text_line(renderer, g_hud_title_font, text_x, panel_y + 14, title_color, "Gravity Sim");
@@ -365,6 +365,8 @@ static void draw_hud(SDL_Renderer *renderer, const Simulation *sim, const SpawnS
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "- / = time, T reset, I integrator");
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "0-4 scenes, R reset, B baseline");
+    line_y += body_step;
+    draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "F5 save, F9 load");
     line_y += body_step;
     draw_text_line(renderer, g_hud_body_font, text_x, line_y, text_color, "C camera, Space pause, H hide HUD");
 }

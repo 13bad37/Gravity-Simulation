@@ -303,3 +303,36 @@ When the baseline is created, the simulation stores `E0`, `P0`, and `L0`. Each f
 This is useful because a good integrator should keep these values pretty stable over time. If they drift badly, that usually means theres some timestep error, integration error, or a bug in the force or collision logic.
 
 One important caveat is that after a spawn or a merge, the physical system itself has changed. At that point the drift is not purely measuring numerical error anymore, which is why the simulation also lets the baseline be reset manually.
+
+## Save and load states
+
+Once the sim had real units, diagnostics, multiple integrators, and more deliberate preset scenes, it stopped making much sense to keep rebuilding interesting states by hand every time I wanted to test something. At that point, save/load stopped being a convenience feature and started being a reproducibility feature.
+
+The main point is pretty simple. If I want to compare two integrators properly, or revisit a collision setup that produced something odd, I need to be able to reload the exact same state instead of trying to recreate it by eye.
+
+So the save format stores the actual simulation state that matters:
+
+- body type
+- mass
+- radius
+- spin angular momentum
+- position
+- velocity
+
+It also stores the surrounding app state that affects how the session continues:
+
+- current scene label
+- active integrator
+- camera state
+- simulated time
+- time scale
+- paused state
+- current spawn type and spawn mass
+
+The important distinction is that not everything on screen is fundamental state. Trails aren't physics, they're just visual. So on load, the sim restores the body data and resets trails cleanly instead of trying to serialise the whole trail buffer.
+
+The file format is plain text on purpose. It would be easy to move to something like JSON later, but while the project is still changing a lot, a readable text format is easier to inspect and easier to debug.
+
+There is also a small validation pass on load. That's there so obviously broken files don't get treated like good physics input by accident. If the body count is invalid, the body types don't make sense, or key values are out of range, the load fails instead of quietly importing nonsense.
+
+One small but important detail is the drift baseline. I don't save and restore that directly. After a load, the current state becomes the new reference point and the baseline gets rebuilt from it. That keeps the drift numbers meaningful instead of mixing an old comparison state into a new session.

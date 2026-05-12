@@ -5,8 +5,8 @@ LDFLAGS = $(shell pkg-config --libs sdl2 SDL2_ttf) -lm
 
 TARGET = gravity_sim
 
-SRC = main.c simulation.c scenes.c render.c
-OBJ = main.o simulation.o scenes.o render.o
+SRC = main.c simulation.c scenes.c render.c state_io.c
+OBJ = main.o simulation.o scenes.o render.o state_io.o
 
 all: $(TARGET)
 

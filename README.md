@@ -9,12 +9,12 @@
 
 <p align="center">
   <img alt="Status active development" src="https://img.shields.io/badge/Status-Active%20Development-1f6feb?style=for-the-badge" />
-  <img alt="Roadmap progress" src="https://img.shields.io/badge/Roadmap-18%2F26%20complete-b08900?style=for-the-badge" height="28" />
+  <img alt="Roadmap progress" src="https://img.shields.io/badge/Roadmap-21%2F26%20complete-2ea44f?style=for-the-badge" height="28" />
 </p>
 
 This is a real time 2D gravity simulation written in C with SDL2. It started as a fun curiosity project, but the direction changed pretty quickly. The goal now is to keep the interaction side enjoyable while pushing the simulation itself toward more defensible physics and better numerical behaviour.
 
-The current build already supports physically meaningful units, multiple integrators, preset scenes, interactive spawning, collision merging, camera controls, and live diagnostics for energy, momentum, angular momentum, and drift. It is still actively being built out, but the foundation is in place and the roadmap is clear.
+The current build already supports physically meaningful units, multiple integrators, preset scenes, interactive spawning, collision merging, save/load state handling, camera controls, and live diagnostics for energy, momentum, angular momentum, and drift. It is still actively being built out, but the foundation is in place and the roadmap is clear.
 
 ## Preview
 
@@ -46,8 +46,9 @@ The current build already supports physically meaningful units, multiple integra
 - Physically meaningful simulation units
 - Runtime integrator comparison with Euler, velocity Verlet, and RK4
 - Interactive body spawning with drag based launch velocity
-- Preset scenes for empty space, a starter system, three body motion, and binary stars
+- Preset scenes for empty space, a solar baseline, three body motion, binary stars, and a gas giant + moon system
 - Perfectly inelastic collision merging with mass, momentum, and density aware radius updates
+- Save and load support for reproducible simulation states
 - Diagnostics for total energy, total momentum, angular momentum, and relative drift from a resettable baseline
 
 ## Core Physics Concepts
@@ -104,7 +105,8 @@ My main development environment is Arch Linux, but the code is intended to stay 
 - `- / =`: slow down or speed up simulated time
 - `T`: reset time scale
 - `I`: cycle the active integrator
-- `0 / 1 / 2 / 3`: switch scenes
+- `F5 / F9`: save or load the current state
+- `0 / 1 / 2 / 3 / 4`: switch scenes
 - `R`: reset the current scene
 - `B`: reset the diagnostics baseline
 - `Space`: pause
@@ -135,12 +137,12 @@ The badge above is generated automatically from this checklist by a GitHub Actio
 - [x] Collision detection with perfectly inelastic merging
 - [x] Spin bookkeeping during off-centre merges
 - [x] SDL_ttf HUD cleanup
+- [x] Better density and body-type models
+- [x] More physically defined preset scenes
+- [x] Save and load simulation states
 
 ### Planned
 
-- [ ] Save and load simulation states
-- [ ] Better density and body-type models
-- [ ] More physically defined preset scenes
 - [ ] Barnes-Hut approximation for larger body counts
 - [ ] Collision model extensions beyond simple merging
 - [ ] Black hole / extreme gravity experiment mode

@@ -2,6 +2,7 @@
 #include "render.h"
 #include "scenes.h"
 #include "simulation.h"
+#include "state_io.h"
 
 #include <SDL2/SDL.h>
 #include <math.h>
@@ -18,12 +19,25 @@ static const double CAMERA_ZOOM_FACTOR = 1.25;
 static const double CAMERA_MIN_METERS_PER_PIXEL = 1.0e5;
 static const double CAMERA_MAX_METERS_PER_PIXEL = 5.0e10;
 static const double CAMERA_KEY_PAN_PIXELS = 80.0;
+static const char *SAVE_STATE_PATH = "gravitysim_save.txt";
 
 static IntegratorMode next_integrator(IntegratorMode integrator) {
     return (IntegratorMode)((integrator + 1) % INTEGRATOR_COUNT);
 }
 
 static double clamp_double(double value, double min_value, double max_value) {
+    if (value < min_value) {
+        return min_value;
+    }
+
+    if (value > max_value) {
+        return max_value;
+    }
+
+    return value;
+}
+
+static int clamp_int(int value, int min_value, int max_value) {
     if (value < min_value) {
         return min_value;
     }
@@ -259,6 +273,50 @@ int main(void) {
                     case SDLK_t:
                         time_scale_index = DEFAULT_TIME_SCALE_INDEX;
                         break;
+
+                    case SDLK_F5: {
+                        SaveState save_state = {0};
+
+                        save_state.simulation = sim;
+                        save_state.scene = current_scene;
+                        save_state.integrator = current_integrator;
+                        save_state.camera = camera;
+                        save_state.spawn_type = spawn.type;
+                        save_state.spawn_mass = spawn.mass;
+                        save_state.simulated_time_seconds = simulated_time_seconds;
+                        save_state.time_scale_index = time_scale_index;
+                        save_state.paused = paused;
+
+                        if (!save_state_to_file(SAVE_STATE_PATH, &save_state)) {
+                            fprintf(stderr, "Failed to save state to %s\n", SAVE_STATE_PATH);
+                        }
+                        break;
+                    }
+
+                    case SDLK_F9: {
+                        SaveState loaded_state = {0};
+
+                        if (!load_state_from_file(SAVE_STATE_PATH, &loaded_state)) {
+                            fprintf(stderr, "Failed to load state from %s\n", SAVE_STATE_PATH);
+                            break;
+                        }
+
+                        sim = loaded_state.simulation;
+                        current_scene = loaded_state.scene;
+                        current_integrator = loaded_state.integrator;
+                        camera = loaded_state.camera;
+                        simulated_time_seconds = loaded_state.simulated_time_seconds;
+                        time_scale_index = clamp_int(loaded_state.time_scale_index, 0, time_scale_count - 1);
+                        paused = loaded_state.paused;
+                        accumulator = 0.0;
+                        spawn.active = false;
+                        set_spawn_body_type(&spawn, loaded_state.spawn_type);
+                        spawn.mass = loaded_state.spawn_mass;
+
+                        // A loaded state becomes the new reference point.
+                        diagnostics_baseline = make_diagnostics_baseline(&sim);
+                        break;
+                    }
 
                     case SDLK_TAB:
                         set_spawn_body_type(&spawn, next_body_type(spawn.type));
