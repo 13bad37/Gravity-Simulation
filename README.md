@@ -4,7 +4,6 @@
   <img alt="Language C" src="https://img.shields.io/badge/Language-C-00599C?style=for-the-badge&logo=c&logoColor=white" />
   <img alt="Graphics SDL2" src="https://img.shields.io/badge/Graphics-SDL2-2ea44f?style=for-the-badge" />
   <img alt="Text SDL2_ttf" src="https://img.shields.io/badge/Text-SDL2__ttf-8a2be2?style=for-the-badge" />
-  <img alt="Focus physics first" src="https://img.shields.io/badge/Focus-Physics--First-ffb347?style=for-the-badge" />
 </p>
 
 <p align="center">
